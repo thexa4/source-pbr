@@ -1,0 +1,284 @@
+//===================== Copyright (c) Valve Corporation. All Rights Reserved. ======================
+//
+// Example pixel shader that can be applied to models
+//
+//==================================================================================================
+
+// STATIC: "CONVERT_TO_SRGB"			"0..0"
+// STATIC: "FLASHLIGHT"					"0..1"
+// STATIC: "FLASHLIGHTDEPTHFILTERMODE"	"0..2"
+
+// DYNAMIC: "WRITEWATERFOGTODESTALPHA"  "0..1"
+// DYNAMIC: "PIXELFOGTYPE"				"0..1"
+// DYNAMIC: "NUM_LIGHTS"				"0..4"
+// DYNAMIC: "WRITE_DEPTH_TO_DESTALPHA"	"0..1"
+// DYNAMIC: "FLASHLIGHTSHADOWS"			"0..1"
+
+// SKIP: ($PIXELFOGTYPE == 0) && ($WRITEWATERFOGTODESTALPHA != 0)
+
+// We don't care about flashlight depth unless the flashlight is on
+// SKIP: ( $FLASHLIGHT == 0 ) && ( $FLASHLIGHTSHADOWS == 1 )
+
+// Flashlight shadow filter mode is irrelevant if there is no flashlight
+// SKIP: ( $FLASHLIGHT == 0 ) && ( $FLASHLIGHTDEPTHFILTERMODE != 0 )
+
+#include "common_flashlight_fxc.h"
+#include "shader_constant_register_map.h"
+
+const float4 g_DiffuseModulation			: register( PSREG_DIFFUSE_MODULATION );
+const float4 g_ShadowTweaks					: register( PSREG_ENVMAP_TINT__SHADOW_TWEAKS );
+const float3 cAmbientCube[6]				: register( PSREG_AMBIENT_CUBE );
+const float4 g_EyePos						: register( PSREG_EYEPOS_SPEC_EXPONENT );
+const float4 g_FogParams					: register( PSREG_FOG_PARAMS );
+const float4 g_FlashlightAttenuationFactors	: register( PSREG_FLASHLIGHT_ATTENUATION );			// On non-flashlight pass
+const float4 g_FlashlightPos_RimBoost		: register( PSREG_FLASHLIGHT_POSITION_RIM_BOOST );
+const float4x4 g_FlashlightWorldToTexture	: register( PSREG_FLASHLIGHT_TO_WORLD_TEXTURE );
+PixelShaderLightInfo cLightInfo[3]			: register( PSREG_LIGHT_INFO_ARRAY );				// 2 registers each - 6 registers total (4th light spread across w's)
+
+
+#define g_FlashlightPos					g_FlashlightPos_RimBoost.xyz
+#define PI								3.141592
+#define EPSILON							0.00001
+
+sampler BaseTextureSampler		: register( s0 );	// Base map, selfillum in alpha
+sampler NormalTextureSampler	: register( s1 );	// Normal map
+sampler EnvmapSampler			: register( s2 );	// Cubemap
+sampler ShadowDepthSampler		: register( s4 );	// Flashlight shadow depth map sampler
+sampler NormalizeRandRotSampler	: register( s5 );	// Normalization / RandomRotation samplers
+sampler FlashlightSampler		: register( s6 );	// Flashlight cookie
+sampler PBRLookupSampler		: register( s9 );	// PBR Lookup texture
+sampler MRAOTextureSampler		: register( s10 );	// MRAO texture
+
+struct PS_INPUT
+{
+	float2 baseTexCoord	: TEXCOORD0;
+	float4 lightAtten	: TEXCOORD1;
+	float3 worldNormal	: TEXCOORD2;
+	float3 worldPos		: TEXCOORD3;
+	float3 projPos		: TEXCOORD4;
+	float4 color		: COLOR0;
+};
+
+float3 fresnelSchlick(float3 F0, float cosTheta)
+{
+	return F0 + (1.0 - F0) * pow(1.0 - cosTheta, 5.0);
+}
+
+
+// GGX/Towbridge-Reitz normal distribution function.
+// Uses Disney's reparametrization of alpha = roughness^2.
+float ndfGGX(float cosLh, float roughness)
+{
+	float alpha   = roughness * roughness;
+	float alphaSq = alpha * alpha;
+
+	float denom = (cosLh * cosLh) * (alphaSq - 1.0) + 1.0;
+	return alphaSq / (PI * denom * denom);
+}
+
+float3 DirectDiffuseBRDF(float3 lightColor, float3 worldSpaceNormal, float3 worldSpaceLightDirection) {
+	return (lightColor * dot(worldSpaceNormal, worldSpaceLightDirection)) / PI;
+}
+
+// Single term for separable Schlick-GGX below.
+float gaSchlickG1(float cosTheta, float k)
+{
+	return cosTheta / (cosTheta * (1.0 - k) + k);
+}
+
+// Schlick-GGX approximation of geometric attenuation function using Smith's method.
+float gaSchlickGGX(float cosLi, float cosLo, float roughness)
+{
+	float r = roughness + 1.0;
+	float k = (r * r) / 8.0; // Epic suggests using this roughness remapping for analytic lights.
+	return gaSchlickG1(cosLi, k) * gaSchlickG1(cosLo, k);
+}
+
+inline float3x3 compute_tangent_frame(float3 vertexNormal, float3 worldPosition, float2 UV, out float3 T, out float3 B)
+{
+	float3 dx_pos = ddx(worldPosition);
+	float3 dy_pos = ddy(worldPosition);
+	
+	float3 sigmaX = dx_pos - dot(dx_pos, vertexNormal);
+	float3 sigmaY = dy_pos - dot(dy_pos, vertexNormal);
+
+	float flipSign = dot(dy_pos, cross(vertexNormal, dx_pos));
+
+	float2 dx_UV = ddx(UV);
+	float2 dy_UV = ddy(UV);
+
+	float det = dot(dx_UV, float2(dy_UV.y, -dy_UV.x));
+	float sign_det = det < 0 ? -1 : 1;
+
+	float2 invC0 = sign_det * float2(dy_UV.y, dx_UV.y);
+	T = sigmaX * invC0.x + sigmaY * invC0.y;
+	if (abs(det) > 0.0) {
+		T = normalize(T);
+	}
+	B = (sign_det * flipSign) * cross(vertexNormal, T);
+
+	return float3x3(T, B, vertexNormal);
+}
+
+float GetAttenForLight(float4 lightAtten, uint lightNum)
+{
+#if (NUM_LIGHTS > 0)
+	if (lightNum == 1) {
+		return lightAtten.y;
+	}
+#endif
+#if (NUM_LIGHTS > 1)
+	if (lightNum == 2) {
+		return lightAtten.z;
+	}
+#endif
+#if (NUM_LIGHTS > 2)
+	if (lightNum == 3) {
+		return lightAtten.a;
+	}
+#endif
+	return lightAtten.x;
+}
+
+float3 calculateLight(float3 lightIn, float3 lightIntensity, float3 lightOut, float3 normal, float3 fresnelReflectance, float roughness, float metalness, float lightDirectionAngle, float3 albedo)
+{
+	// Lh
+	float3 HalfAngle = normalize(lightIn + lightOut);
+
+	float cosLightIn = max(0.0, dot(normal, lightIn));
+	float cosHalfAngle = max(0.0, dot(normal, HalfAngle));
+
+	// F - Calculate Fresnel term for direct lighting.
+	float3 F = fresnelSchlick(fresnelReflectance, max(0.0, dot(HalfAngle, lightOut)));
+
+	// D - Calculate normal distribution for specular BRDF.
+	float D = ndfGGX(cosHalfAngle, roughness);
+
+	// Calculate geometric attenuation for specular BRDF.
+	float G = gaSchlickGGX(cosLightIn, lightDirectionAngle, roughness);
+
+	// Diffuse scattering happens due to light being refracted multiple times by a dielectric medium.
+	// Metals on the other hand either reflect or absorb energy, so diffuse contribution is always zero.
+	// To be energy conserving we must scale diffuse BRDF contribution based on Fresnel factor & metalness.
+	float3 kd = lerp(float3(1, 1, 1) - F, float3(0, 0, 0), metalness);
+
+	float3 diffuseBRDF = kd * albedo;
+
+	// Cook-Torrance specular microfacet BRDF.
+	float3 specularBRDF = (F * D * G) / max(EPSILON, 4.0 * cosLightIn * lightDirectionAngle);
+
+	return (diffuseBRDF + specularBRDF) * lightIntensity * cosLightIn;
+}
+
+float3 ambientLookup(float3 normal)
+{
+	float4 specularUV = float4(normal, 12.0);
+	return ENV_MAP_SCALE * texCUBElod(EnvmapSampler, specularUV);
+}
+
+float4 main( PS_INPUT i ) : COLOR
+{
+	float4 albedo = tex2D( BaseTextureSampler, i.baseTexCoord );
+	float3 mrao = tex2D( MRAOTextureSampler, i.baseTexCoord );
+	float metalness = g_FlashlightPos_RimBoost.z * mrao.x;
+	float roughness = g_FlashlightPos_RimBoost.a * mrao.y;
+
+	float3 surfNormal = normalize(i.worldNormal);
+	float3 surfTangent;
+	float3 surfBase;
+	float3x3 normalBasis = compute_tangent_frame(surfNormal, i.worldPos, i.baseTexCoord, surfTangent, surfBase);
+	float3 textureNormal = (tex2D( NormalTextureSampler, i.baseTexCoord ) - float3(0.5, 0.5, 0.5)) * 2;
+	float3 normal = normalize(mul(textureNormal, normalBasis));
+
+	// Lo
+	float3 outgoingLightDirection = normalize(g_EyePos - i.worldPos);
+
+	// cosLo
+	float lightDirectionAngle = max(0.0, dot(normal, outgoingLightDirection));
+
+	// Lr
+	float3 specularReflectionVector = 2.0 * lightDirectionAngle * normal - outgoingLightDirection;
+
+	// F0
+	float3 dielectricCoefficient = 0.04;
+	float3 fresnelReflectance = lerp(dielectricCoefficient, albedo, metalness);
+
+	float3 directLighting = 0.0;
+
+	for (uint n = 0; n < NUM_LIGHTS && n < 0; ++n)
+	{
+		// Li
+		float3 LightIn = normalize(PixelShaderGetLightVector(i.worldPos, cLightInfo, n));
+		float3 LightColor = PixelShaderGetLightColor(cLightInfo, n) * GetAttenForLight(i.lightAtten, n);
+
+		directLighting += calculateLight(LightIn, LightColor, outgoingLightDirection,
+			normal, fresnelReflectance, roughness, metalness, lightDirectionAngle, albedo);
+	}
+	
+	if ( FLASHLIGHT > 0 )
+	{
+		float4 flashlightSpacePosition = mul( float4( i.worldPos, 1.0f ), g_FlashlightWorldToTexture );
+		float3 vProjCoords = flashlightSpacePosition.xyz / flashlightSpacePosition.w;
+
+		float3 delta = g_FlashlightPos - i.worldPos;
+		float distSquared = dot( delta, delta );
+		float dist = sqrt( distSquared );
+
+		float flashlightShadow = DoFlashlightShadow(ShadowDepthSampler, NormalizeRandRotSampler, vProjCoords, i.projPos, FLASHLIGHTDEPTHFILTERMODE, g_ShadowTweaks, true);
+		float flashlightAttenuated = lerp( flashlightShadow, 1.0f, g_ShadowTweaks.y );	// Blend between fully attenuated and not attenuated
+		float fAtten = saturate( dot( g_FlashlightAttenuationFactors.xyz, float3( 1.0f, 1.0f/dist, 1.0f/distSquared ) ) );
+		flashlightShadow = saturate( lerp( flashlightAttenuated, flashlightShadow, fAtten ) );	// Blend between shadow and above, according to light attenuation
+		
+		
+		float3 flashlightColor = tex2D( FlashlightSampler, vProjCoords );
+		float farZ = g_FlashlightAttenuationFactors.w;
+		float endFalloffFactor = RemapValClamped( dist, farZ, 0.6f * farZ, 0.0f, 1.0f );
+
+		float3 flashLightIntensity = flashlightColor * flashlightShadow * endFalloffFactor;
+		
+		float3 flashLightIn = normalize(g_FlashlightPos_RimBoost.xyz - i.worldPos);
+
+		directLighting += max(0.0, calculateLight(flashLightIn, flashLightIntensity, outgoingLightDirection,
+				normal, fresnelReflectance, roughness, metalness, lightDirectionAngle, albedo));
+	}
+	
+	// Start ambient
+	float3 ambientLighting = 0; //float3(FLASHLIGHT, 0.5, 0);
+
+	{
+		//float3 irradiance = AmbientLight(normal, cAmbientCube);
+		float3 irradiance = ambientLookup(normal);
+
+		// F
+		float3 ambientLightingFresnelTerm = fresnelSchlick(fresnelReflectance, lightDirectionAngle);
+
+		// kd
+		float3 diffuseContributionFactor = lerp(1.0 - ambientLightingFresnelTerm, 0.0, metalness);
+
+		float3 diffuseIBL = diffuseContributionFactor * albedo * irradiance;
+
+		float4 specularUV = float4(specularReflectionVector, roughness * 10.0);
+		float4 lookup = ENV_MAP_SCALE * texCUBElod(EnvmapSampler, specularUV);
+		//HACK: lookat
+		float4 specularIrradiance = lerp(lookup, float4(AmbientLight(specularReflectionVector, cAmbientCube), 1.0), roughness);
+	
+		float3 specularBRDF = tex2D(PBRLookupSampler, float2(lightDirectionAngle, roughness));
+
+		float3 specularIBL = (fresnelReflectance * specularBRDF.x + specularBRDF.y) * specularIrradiance;
+
+		ambientLighting = diffuseIBL + specularIBL;
+	}
+	// End ambient
+
+	float fogFactor = CalcPixelFogFactor( PIXELFOGTYPE, g_FogParams, g_EyePos.z, i.worldPos.z, i.projPos.z );
+
+	float alpha = 1.0;
+#if WRITEWATERFOGTODESTALPHA && ( PIXELFOGTYPE == PIXEL_FOG_TYPE_HEIGHT )
+	alpha = fogFactor;
+#endif
+
+	bool bWriteDepthToAlpha = ( WRITE_DEPTH_TO_DESTALPHA != 0 ) && ( WRITEWATERFOGTODESTALPHA == 0 );
+	//ambientLighting = 0;
+	
+	return FinalOutput( float4( directLighting + ambientLighting, alpha ), fogFactor, PIXELFOGTYPE, TONEMAP_SCALE_LINEAR, bWriteDepthToAlpha, i.projPos.z );	
+}

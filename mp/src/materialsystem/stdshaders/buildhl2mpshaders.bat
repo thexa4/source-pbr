@@ -17,5 +17,4 @@ set SOURCEDIR=..\..
 rem ==== MOD PATH CONFIGURATIONS END ===
 rem ====================================
 
-
 call buildsdkshaders.bat
