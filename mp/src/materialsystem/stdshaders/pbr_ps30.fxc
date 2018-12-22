@@ -44,8 +44,8 @@ sampler BaseTextureSampler		: register( s0 );	// Base map, selfillum in alpha
 sampler NormalTextureSampler	: register( s1 );	// Normal map
 sampler EnvmapSampler			: register( s2 );	// Cubemap
 sampler ShadowDepthSampler		: register( s4 );	// Flashlight shadow depth map sampler
-sampler NormalizeRandRotSampler	: register( s5 );	// Normalization / RandomRotation samplers
-sampler FlashlightSampler		: register( s6 );	// Flashlight cookie
+sampler RandRotSampler			: register( s5 );	// RandomRotation sampler
+sampler FlashlightSampler		: register( s6 );	// Flashlight cookie 
 sampler PBRLookupSampler		: register( s9 );	// PBR Lookup texture
 sampler MRAOTextureSampler		: register( s10 );	// MRAO texture
 
@@ -56,7 +56,6 @@ struct PS_INPUT
 	float3 worldNormal	: TEXCOORD2;
 	float3 worldPos		: TEXCOORD3;
 	float3 projPos		: TEXCOORD4;
-	float4 color		: COLOR0;
 };
 
 float3 fresnelSchlick(float3 F0, float cosTheta)
@@ -224,7 +223,7 @@ float4 main( PS_INPUT i ) : COLOR
 		float distSquared = dot( delta, delta );
 		float dist = sqrt( distSquared );
 
-		float flashlightShadow = DoFlashlightShadow(ShadowDepthSampler, NormalizeRandRotSampler, vProjCoords, i.projPos, FLASHLIGHTDEPTHFILTERMODE, g_ShadowTweaks, true);
+		float flashlightShadow = DoFlashlightShadow(ShadowDepthSampler, RandRotSampler, vProjCoords, i.projPos, FLASHLIGHTDEPTHFILTERMODE, g_ShadowTweaks, true);
 		float flashlightAttenuated = lerp( flashlightShadow, 1.0f, g_ShadowTweaks.y );	// Blend between fully attenuated and not attenuated
 		float fAtten = saturate( dot( g_FlashlightAttenuationFactors.xyz, float3( 1.0f, 1.0f/dist, 1.0f/distSquared ) ) );
 		flashlightShadow = saturate( lerp( flashlightAttenuated, flashlightShadow, fAtten ) );	// Blend between shadow and above, according to light attenuation

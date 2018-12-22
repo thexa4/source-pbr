@@ -75,14 +75,10 @@ END_SHADER_PARAMS
 		// This shader can be used with hw skinning
 		SET_FLAGS2(MATERIAL_VAR2_SUPPORTS_HW_SKINNING);
 		SET_FLAGS2(MATERIAL_VAR2_LIGHTING_VERTEX_LIT);
-		//SET_FLAGS2( MATERIAL_VAR2_LIGHTING_BUMPED_LIGHTMAP );
 		SET_FLAGS2(MATERIAL_VAR2_USES_ENV_CUBEMAP);
 		SET_FLAGS2(MATERIAL_VAR2_USE_FLASHLIGHT);
-		//SET_FLAGS2(	MATERIAL_VAR2_DIFFUSE_BUMPMAPPED_MODEL );
-		//SET_FLAGS2( MATERIAL_VAR2_SUPPORTS_FLASHLIGHT );
 		SET_FLAGS2(MATERIAL_VAR2_NEEDS_BAKED_LIGHTING_SNAPSHOTS);
 		params[PBRLOOKUP]->SetStringValue("dev/pbr_lookup");
-		// FLASHLIGHTFIXME
 		params[FLASHLIGHTTEXTURE]->SetStringValue("effects/flashlight001");
 
 	}
@@ -134,13 +130,6 @@ END_SHADER_PARAMS
 		BlendType_t nBlendType = EvaluateBlendRequirements(info.baseTexture, true);
 		bool bFullyOpaque = (nBlendType != BT_BLENDADD) && (nBlendType != BT_BLEND) && !bIsAlphaTested;
 
-		//CExampleModel_DX9_Context *pContextData = reinterpret_cast< CExampleModel_DX9_Context *> (*pContextDataPtr);
-		//if (!pContextData)
-		//{
-		//	pContextData = new CExampleModel_DX9_Context;
-		//	*pContextDataPtr = pContextData;
-		//}
-
 		if (IsSnapshotting())
 		{
 			pShaderShadow->EnableAlphaTest(bIsAlphaTested);
@@ -155,19 +144,6 @@ END_SHADER_PARAMS
 
 			if (bHasFlashlight)
 			{
-				//if( bIsAlphaTested )
-				//{
-				//	// disable alpha test and use the zfunc zequals since alpha isn't guaranteed to 
-				//	// be the same on both the regular pass and the flashlight pass.
-				//	pShaderShadow->EnableAlphaTest( false );
-				//	pShaderShadow->DepthFunc( SHADER_DEPTHFUNC_EQUAL );
-				//}
-				//pShaderShadow->EnableBlending( true );
-				//pShaderShadow->EnableDepthWrites( false );
-
-				// Be sure not to write to dest alpha
-				//pShaderShadow->EnableAlphaWrites( false );
-
 				nShadowFilterMode = g_pHardwareConfig->GetShadowFilterMode();	// Based upon vendor and device dependent formats
 			}
 
@@ -202,8 +178,8 @@ END_SHADER_PARAMS
 			// Always enable, since flat normal will be bound
 			pShaderShadow->EnableTexture(SHADER_SAMPLER3, true);		// Normal map
 			userDataSize = 4; // tangent S
-			pShaderShadow->EnableTexture(SHADER_SAMPLER5, true);		// Normalizing cube map
-			pShaderShadow->EnableSRGBWrite(true);
+			//pShaderShadow->EnableTexture(SHADER_SAMPLER5, true);		// Normalizing cube map
+			//pShaderShadow->EnableSRGBWrite(true);
 
 			// texcoord0 : base texcoord, texcoord2 : decal hw morph delta
 			int pTexCoordDim[3] = { 2, 0, 3 };
@@ -246,7 +222,7 @@ END_SHADER_PARAMS
 			if (bHasEnvTexture)
 				BindTexture(SHADER_SAMPLER2, info.envMap, 0);
 			else
-				pShaderAPI->BindStandardTexture(SHADER_SAMPLER2, TEXTURE_WHITE);
+				pShaderAPI->BindStandardTexture(SHADER_SAMPLER2, TEXTURE_GREY);
 
 			BindTexture(SHADER_SAMPLER9, info.pbrLookupTexture, 0);
 
@@ -318,13 +294,11 @@ END_SHADER_PARAMS
 
 			SetVertexShaderTextureTransform(VERTEX_SHADER_SHADER_SPECIFIC_CONST_0, info.baseTextureTransform);
 			SetModulationPixelShaderDynamicState_LinearColorSpace(1);
-			//pShader->SetAmbientCubeDynamicStateVertexShader();
 
-
-			if (!bHasFlashlight)
-			{
-				pShaderAPI->BindStandardTexture(SHADER_SAMPLER5, TEXTURE_NORMALIZATION_CUBEMAP_SIGNED);
-			}
+			//if (!bHasFlashlight)
+			//{
+			//	pShaderAPI->BindStandardTexture(SHADER_SAMPLER5, TEXTURE_NORMALIZATION_CUBEMAP_SIGNED);
+			//}
 
 			pShaderAPI->SetPixelShaderStateAmbientLightCube(PSREG_AMBIENT_CUBE);
 			pShaderAPI->CommitPixelShaderLighting(PSREG_LIGHT_INFO_ARRAY);
