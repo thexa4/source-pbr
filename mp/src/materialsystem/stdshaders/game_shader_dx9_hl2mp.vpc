@@ -13,6 +13,7 @@ $Project "Shaders (HL2MP)"
 	$Folder	"Header Files"
 	{
 		$File	"common_vertexlitgeneric_dx9.h"
+		$File	"common_lightmappedgeneric_fxc.h"
 		$File	"common_flashlight_fxc.h"
 	}
 	

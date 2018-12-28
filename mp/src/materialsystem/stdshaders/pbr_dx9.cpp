@@ -30,7 +30,8 @@ struct PBR_Vars_t
 	float roughness;
 };
 
-ConVarRef mat_fullbright{ "mat_fullbright" };
+static ConVar mat_fullbright("mat_fullbright", "0", FCVAR_CHEAT);
+static ConVar mat_specular("mat_specular", "1", FCVAR_CHEAT);
 
 //DEFINE_FALLBACK_SHADER( UnlitGeneric, PBR )
 BEGIN_VS_SHADER( PBR, "PBR shader" )
@@ -74,6 +75,7 @@ END_SHADER_PARAMS
 
 		// This shader can be used with hw skinning
 		SET_FLAGS2(MATERIAL_VAR2_SUPPORTS_HW_SKINNING);
+
 		SET_FLAGS2(MATERIAL_VAR2_LIGHTING_VERTEX_LIT);
 		SET_FLAGS2(MATERIAL_VAR2_USES_ENV_CUBEMAP);
 		SET_FLAGS2(MATERIAL_VAR2_USE_FLASHLIGHT);
@@ -276,6 +278,9 @@ END_SHADER_PARAMS
 			vEyePos_SpecExponent[3] = 0.0f;
 			pShaderAPI->SetPixelShaderConstant(PSREG_EYEPOS_SPEC_EXPONENT, vEyePos_SpecExponent, 1);
 
+			LoadBumpLightmapCoordinateAxes_PixelShader(PSREG_CONSTANT_27);
+			s_pShaderAPI->BindStandardTexture(SHADER_SAMPLER7, TEXTURE_LIGHTMAP_BUMPED);
+
 			DECLARE_DYNAMIC_VERTEX_SHADER(example_model_vs20);
 			SET_DYNAMIC_VERTEX_SHADER_COMBO(DOWATERFOG, fogIndex);
 			SET_DYNAMIC_VERTEX_SHADER_COMBO(SKINNING, numBones > 0);
@@ -295,11 +300,6 @@ END_SHADER_PARAMS
 			SetVertexShaderTextureTransform(VERTEX_SHADER_SHADER_SPECIFIC_CONST_0, info.baseTextureTransform);
 			SetModulationPixelShaderDynamicState_LinearColorSpace(1);
 
-			//if (!bHasFlashlight)
-			//{
-			//	pShaderAPI->BindStandardTexture(SHADER_SAMPLER5, TEXTURE_NORMALIZATION_CUBEMAP_SIGNED);
-			//}
-
 			pShaderAPI->SetPixelShaderStateAmbientLightCube(PSREG_AMBIENT_CUBE);
 			pShaderAPI->CommitPixelShaderLighting(PSREG_LIGHT_INFO_ARRAY);
 
@@ -307,6 +307,10 @@ END_SHADER_PARAMS
 			if (bLightingOnly)
 			{
 				pShaderAPI->BindStandardTexture(SHADER_SAMPLER0, TEXTURE_GREY);
+			}
+			if (!mat_specular.GetBool())
+			{
+				pShaderAPI->BindStandardTexture(SHADER_SAMPLER2, TEXTURE_GREY);
 			}
 
 			pShaderAPI->SetPixelShaderFogParams(PSREG_FOG_PARAMS);

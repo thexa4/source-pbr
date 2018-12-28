@@ -27,14 +27,14 @@
 
 const float4 g_DiffuseModulation			: register( PSREG_DIFFUSE_MODULATION );
 const float4 g_ShadowTweaks					: register( PSREG_ENVMAP_TINT__SHADOW_TWEAKS );
-const float3 cAmbientCube[6]				: register( PSREG_AMBIENT_CUBE );
+//const float3 cAmbientCube[6]				: register( PSREG_AMBIENT_CUBE );
 const float4 g_EyePos						: register( PSREG_EYEPOS_SPEC_EXPONENT );
 const float4 g_FogParams					: register( PSREG_FOG_PARAMS );
 const float4 g_FlashlightAttenuationFactors	: register( PSREG_FLASHLIGHT_ATTENUATION );			// On non-flashlight pass
 const float4 g_FlashlightPos_RimBoost		: register( PSREG_FLASHLIGHT_POSITION_RIM_BOOST );
 const float4x4 g_FlashlightWorldToTexture	: register( PSREG_FLASHLIGHT_TO_WORLD_TEXTURE );
 PixelShaderLightInfo cLightInfo[3]			: register( PSREG_LIGHT_INFO_ARRAY );				// 2 registers each - 6 registers total (4th light spread across w's)
-
+const float4 g_LightmapCoords[3]			: register( PSREG_AMBIENT_CUBE );
 
 #define g_FlashlightPos					g_FlashlightPos_RimBoost.xyz
 #define PI								3.141592
@@ -46,6 +46,7 @@ sampler EnvmapSampler			: register( s2 );	// Cubemap
 sampler ShadowDepthSampler		: register( s4 );	// Flashlight shadow depth map sampler
 sampler RandRotSampler			: register( s5 );	// RandomRotation sampler
 sampler FlashlightSampler		: register( s6 );	// Flashlight cookie 
+sampler LightmapSampler			: register( s7 );	// Lightmap
 sampler PBRLookupSampler		: register( s9 );	// PBR Lookup texture
 sampler MRAOTextureSampler		: register( s10 );	// MRAO texture
 
@@ -259,7 +260,7 @@ float4 main( PS_INPUT i ) : COLOR
 		float4 specularUV = float4(specularReflectionVector, roughness * 10.0);
 		float4 lookup = ENV_MAP_SCALE * texCUBElod(EnvmapSampler, specularUV);
 		//HACK: lookat
-		float4 specularIrradiance = lerp(lookup, float4(AmbientLight(specularReflectionVector, cAmbientCube), 1.0), roughness);
+		float4 specularIrradiance = lerp(lookup, float4(ambientLookup(specularReflectionVector), 1.0), roughness);
 	
 		float3 specularBRDF = tex2D(PBRLookupSampler, float2(lightDirectionAngle, roughness));
 
