@@ -27,8 +27,8 @@ struct PBR_Vars_t
 	int flashlightTextureFrame;
 	int pbrLookupTexture;
 	int mraoTexture;
-	float metalness;
-	float roughness;
+	//int metalness;
+	//int roughness;
 };
 
 static ConVar mat_fullbright("mat_fullbright", "0", FCVAR_CHEAT);
@@ -39,8 +39,8 @@ BEGIN_VS_SHADER( PBR, "PBR shader" )
 
 BEGIN_SHADER_PARAMS
 	SHADER_PARAM(ALPHATESTREFERENCE, SHADER_PARAM_TYPE_FLOAT, "0.0", "")
-	SHADER_PARAM(METALNESS, SHADER_PARAM_TYPE_FLOAT, "0.0", "Sets the metalness of the material.")
-	SHADER_PARAM(ROUGHNESS, SHADER_PARAM_TYPE_FLOAT, "0.0", "Sets the roughness of the material.")
+	//SHADER_PARAM(METALNESS, SHADER_PARAM_TYPE_FLOAT, "1.0", "Sets the metalness of the material.")
+	//SHADER_PARAM(ROUGHNESS, SHADER_PARAM_TYPE_FLOAT, "1.0", "Sets the roughness of the material.")
 	SHADER_PARAM(ENVMAP, SHADER_PARAM_TYPE_ENVMAP, "", "Set the cubemap for this material.")
 	SHADER_PARAM(MRAOTEXTURE, SHADER_PARAM_TYPE_TEXTURE, "", "Texture with metalness in R, roughness in G, ambient occlusion in B.")
 	SHADER_PARAM_FLAGS(PBRLOOKUP, SHADER_PARAM_TYPE_TEXTURE, "dev/pbr_lookup", "The PBR lookup texture, don't change this.", SHADER_PARAM_NOT_EDITABLE)
@@ -55,8 +55,8 @@ END_SHADER_PARAMS
 		info.baseTextureFrame = FRAME;
 		info.baseTextureTransform = BASETEXTURETRANSFORM;
 		info.alphaTestReference = ALPHATESTREFERENCE;
-		info.metalness = METALNESS;
-		info.roughness = ROUGHNESS;
+		//info.metalness = METALNESS;
+		//info.roughness = ROUGHNESS;
 		info.flashlightTexture = FLASHLIGHTTEXTURE;
 		info.flashlightTextureFrame = FLASHLIGHTTEXTUREFRAME;
 		info.envMap = ENVMAP;
@@ -78,9 +78,12 @@ END_SHADER_PARAMS
 		// This shader can be used with hw skinning
 		SET_FLAGS2(MATERIAL_VAR2_SUPPORTS_HW_SKINNING);
 
-		SET_FLAGS2(MATERIAL_VAR2_LIGHTING_VERTEX_LIT);
-		//SET_FLAGS2(MATERIAL_VAR2_LIGHTING_LIGHTMAP);
-		SET_FLAGS2(MATERIAL_VAR2_LIGHTING_BUMPED_LIGHTMAP);
+		if (IS_FLAG_SET(MATERIAL_VAR_MODEL)) {
+			SET_FLAGS2(MATERIAL_VAR2_LIGHTING_VERTEX_LIT);
+		} else {
+			SET_FLAGS2(MATERIAL_VAR2_LIGHTING_LIGHTMAP);
+			SET_FLAGS2(MATERIAL_VAR2_LIGHTING_BUMPED_LIGHTMAP);
+		}
 		SET_FLAGS2(MATERIAL_VAR2_USES_ENV_CUBEMAP);
 		SET_FLAGS2(MATERIAL_VAR2_USE_FLASHLIGHT);
 		SET_FLAGS2(MATERIAL_VAR2_NEEDS_BAKED_LIGHTING_SNAPSHOTS);
@@ -174,6 +177,8 @@ END_SHADER_PARAMS
 			}
 			pShaderShadow->EnableTexture(SHADER_SAMPLER9, true); // PBR lookup texture
 			pShaderShadow->EnableSRGBRead(SHADER_SAMPLER9, false);
+			pShaderShadow->EnableTexture(SHADER_SAMPLER7, true); // Lightmap texture
+			pShaderShadow->EnableSRGBRead(SHADER_SAMPLER7, false);
 			pShaderShadow->EnableTexture(SHADER_SAMPLER10, true); // MRAO texture
 			pShaderShadow->EnableSRGBRead(SHADER_SAMPLER10, false);
 			pShaderShadow->EnableTexture(SHADER_SAMPLER1, true); // NORMAL texture
@@ -191,15 +196,18 @@ END_SHADER_PARAMS
 
 			pShaderShadow->DrawFlags(SHADER_DRAW_POSITION | SHADER_DRAW_NORMAL | SHADER_DRAW_TEXCOORD0 | SHADER_DRAW_LIGHTMAP_TEXCOORD1);
 			unsigned int flags = VERTEX_POSITION | VERTEX_NORMAL | VERTEX_FORMAT_COMPRESSED;
-			pShaderShadow->VertexShaderVertexFormat(flags, nTexCoordCount, pTexCoordDim, 4);
+			if (IS_FLAG_SET(MATERIAL_VAR_MODEL))
+				pShaderShadow->VertexShaderVertexFormat(flags, nTexCoordCount, pTexCoordDim, 4);
+			else
+				pShaderShadow->VertexShaderVertexFormat(flags, 3, 0, 0);
 
 			DECLARE_STATIC_VERTEX_SHADER(pbr_vs20);
 			SET_STATIC_VERTEX_SHADER(pbr_vs20);
 
-			// Assume we're only going to get in here if we support 2b
 			DECLARE_STATIC_PIXEL_SHADER(pbr_ps30);
 			SET_STATIC_PIXEL_SHADER_COMBO(FLASHLIGHT, bHasFlashlight);
 			SET_STATIC_PIXEL_SHADER_COMBO(FLASHLIGHTDEPTHFILTERMODE, nShadowFilterMode);
+			SET_STATIC_PIXEL_SHADER_COMBO(LIGHTMAPPED, !IS_FLAG_SET(MATERIAL_VAR_MODEL));
 			SET_STATIC_PIXEL_SHADER_COMBO(CONVERT_TO_SRGB, 0);
 			SET_STATIC_PIXEL_SHADER(pbr_ps30);
 
@@ -257,7 +265,7 @@ END_SHADER_PARAMS
 				FlashlightState_t state = pShaderAPI->GetFlashlightStateEx(worldToTexture, &pFlashlightDepthTexture);
 				bFlashlightShadows = state.m_bEnableShadows && (pFlashlightDepthTexture != NULL);
 
-				SetFlashLightColorFromState(state, pShaderAPI, PSREG_FLASHLIGHT_COLOR);
+				//SetFlashLightColorFromState(state, pShaderAPI, PSREG_FLASHLIGHT_COLOR);
 
 				if (pFlashlightDepthTexture && g_pConfig->ShadowDepthTexture() && state.m_bEnableShadows)
 				{
@@ -329,7 +337,7 @@ END_SHADER_PARAMS
 				float atten[4], pos[4], tweaks[4];
 
 				const FlashlightState_t &flashlightState = pShaderAPI->GetFlashlightState(worldToTexture);
-				SetFlashLightColorFromState(flashlightState, pShaderAPI, PSREG_FLASHLIGHT_COLOR);
+				//SetFlashLightColorFromState(flashlightState, pShaderAPI, PSREG_FLASHLIGHT_COLOR);
 
 				BindTexture(SHADER_SAMPLER6, flashlightState.m_pSpotlightTexture, flashlightState.m_nSpotlightTextureFrame);
 
@@ -342,7 +350,8 @@ END_SHADER_PARAMS
 				pos[0] = flashlightState.m_vecLightOrigin[0];		// Set the flashlight origin
 				pos[1] = flashlightState.m_vecLightOrigin[1];
 				pos[2] = flashlightState.m_vecLightOrigin[2];
-				pShaderAPI->SetPixelShaderConstant(PSREG_FLASHLIGHT_POSITION_RIM_BOOST, pos, 1);
+				//pShaderAPI->SetPixelShaderConstant(PSREG_FLASHLIGHT_POSITION_RIM_BOOST, pos, 1);
+				pShaderAPI->SetPixelShaderConstant(PSREG_CONSTANT_27, pos, 1);
 
 				pShaderAPI->SetPixelShaderConstant(PSREG_FLASHLIGHT_TO_WORLD_TEXTURE, worldToTexture.Base(), 4);
 
@@ -355,14 +364,14 @@ END_SHADER_PARAMS
 
 
 			// Dimensions of screen, used for screen-space noise map sampling
-			float vScreenScale[4] = { 1280.0f / 32.0f, 720.0f / 32.0f, 0, 0 };
-			int nWidth, nHeight;
-			pShaderAPI->GetBackBufferDimensions(nWidth, nHeight);
-			vScreenScale[0] = (float)nWidth / 32.0f;
-			vScreenScale[1] = (float)nHeight / 32.0f;
-			vScreenScale[2] = info.metalness;
-			vScreenScale[3] = info.roughness;
-			pShaderAPI->SetPixelShaderConstant(PSREG_FLASHLIGHT_SCREEN_SCALE, vScreenScale, 1);
+			//float vScreenScale[4] = { 1280.0f / 32.0f, 720.0f / 32.0f, 0, 0 };
+			//int nWidth, nHeight;
+			//pShaderAPI->GetBackBufferDimensions(nWidth, nHeight);
+			//vScreenScale[0] = (float)nWidth / 32.0f;
+			//vScreenScale[1] = (float)nHeight / 32.0f;
+			//vScreenScale[2] = (info.metalness != -1 && params[info.metalness]  )? params[info.metalness]->GetFloatValue() : 1.0f;
+			//vScreenScale[3] = (info.roughness != -1 && params[info.roughness]->IsDefined())? params[info.roughness]->GetFloatValue() : 1.0f;
+			//pShaderAPI->SetPixelShaderConstant(PSREG_FLASHLIGHT_SCREEN_SCALE, vScreenScale, 1);
 		}
 		Draw();
 	}

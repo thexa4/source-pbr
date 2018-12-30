@@ -64,6 +64,27 @@ public:
 		m_bFLASHLIGHTDEPTHFILTERMODE = true;
 #endif
 	}
+private:
+	int m_nLIGHTMAPPED;
+#ifdef _DEBUG
+	bool m_bLIGHTMAPPED;
+#endif
+public:
+	void SetLIGHTMAPPED( int i )
+	{
+		Assert( i >= 0 && i <= 1 );
+		m_nLIGHTMAPPED = i;
+#ifdef _DEBUG
+		m_bLIGHTMAPPED = true;
+#endif
+	}
+	void SetLIGHTMAPPED( bool i )
+	{
+		m_nLIGHTMAPPED = i ? 1 : 0;
+#ifdef _DEBUG
+		m_bLIGHTMAPPED = true;
+#endif
+	}
 public:
 	pbr_ps30_Static_Index( )
 	{
@@ -79,19 +100,23 @@ public:
 		m_bFLASHLIGHTDEPTHFILTERMODE = false;
 #endif // _DEBUG
 		m_nFLASHLIGHTDEPTHFILTERMODE = 0;
+#ifdef _DEBUG
+		m_bLIGHTMAPPED = false;
+#endif // _DEBUG
+		m_nLIGHTMAPPED = 0;
 	}
 	int GetIndex()
 	{
 		// Asserts to make sure that we aren't using any skipped combinations.
 		// Asserts to make sure that we are setting all of the combination vars.
 #ifdef _DEBUG
-		bool bAllStaticVarsDefined = m_bCONVERT_TO_SRGB && m_bFLASHLIGHT && m_bFLASHLIGHTDEPTHFILTERMODE;
+		bool bAllStaticVarsDefined = m_bCONVERT_TO_SRGB && m_bFLASHLIGHT && m_bFLASHLIGHTDEPTHFILTERMODE && m_bLIGHTMAPPED;
 		Assert( bAllStaticVarsDefined );
 #endif // _DEBUG
-		return ( 80 * m_nCONVERT_TO_SRGB ) + ( 80 * m_nFLASHLIGHT ) + ( 160 * m_nFLASHLIGHTDEPTHFILTERMODE ) + 0;
+		return ( 80 * m_nCONVERT_TO_SRGB ) + ( 80 * m_nFLASHLIGHT ) + ( 160 * m_nFLASHLIGHTDEPTHFILTERMODE ) + ( 480 * m_nLIGHTMAPPED ) + 0;
 	}
 };
-#define shaderStaticTest_pbr_ps30 psh_forgot_to_set_static_CONVERT_TO_SRGB + psh_forgot_to_set_static_FLASHLIGHT + psh_forgot_to_set_static_FLASHLIGHTDEPTHFILTERMODE + 0
+#define shaderStaticTest_pbr_ps30 psh_forgot_to_set_static_CONVERT_TO_SRGB + psh_forgot_to_set_static_FLASHLIGHT + psh_forgot_to_set_static_FLASHLIGHTDEPTHFILTERMODE + psh_forgot_to_set_static_LIGHTMAPPED + 0
 class pbr_ps30_Dynamic_Index
 {
 private:

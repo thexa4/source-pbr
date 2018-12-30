@@ -43,7 +43,9 @@ struct VS_OUTPUT
 	float3 worldNormal	: TEXCOORD2;
 	float3 worldPos		: TEXCOORD3;
 	float3 projPos		: TEXCOORD4;
-	float2 vLightmapTexCoord	: TEXCOORD5;
+	float4 lightmapTexCoord1And2	: TEXCOORD5;
+	float4 lightmapTexCoord3		: TEXCOORD6;			// and basetexcoord*mask_scale
+
 };
 
 //-----------------------------------------------------------------------------
@@ -53,7 +55,20 @@ VS_OUTPUT main( const VS_INPUT v )
 {
 	VS_OUTPUT o = ( VS_OUTPUT )0;
 
-	o.vLightmapTexCoord = v.vLightmapTexCoord;// + v.vLightmapTexCoordOffset;
+	o.lightmapTexCoord3.z = dot( v.vTexCoord0, cBaseTexCoordTransform[0] ) + cBaseTexCoordTransform[0].w;
+	o.lightmapTexCoord3.w = dot( v.vTexCoord0, cBaseTexCoordTransform[1] ) + cBaseTexCoordTransform[1].w;
+	o.lightmapTexCoord1And2.xy = v.vLightmapTexCoord + v.vLightmapTexCoordOffset;
+
+	float2 lightmapTexCoord2 = o.lightmapTexCoord1And2.xy + v.vLightmapTexCoordOffset;
+	float2 lightmapTexCoord3 = lightmapTexCoord2 + v.vLightmapTexCoordOffset;
+
+	// reversed component order
+	o.lightmapTexCoord1And2.w = lightmapTexCoord2.x;
+	o.lightmapTexCoord1And2.z = lightmapTexCoord2.y;
+
+	o.lightmapTexCoord3.xy = lightmapTexCoord3;
+
+
 
 	float3 vNormal;
 	DecompressVertex_Normal( v.vNormal, vNormal );
