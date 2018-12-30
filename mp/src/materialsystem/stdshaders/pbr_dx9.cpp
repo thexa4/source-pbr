@@ -9,7 +9,7 @@
 #include "commandbuilder.h"
 #include "cpp_shader_constant_register_map.h"
 
-#include "example_model_vs20.inc"
+#include "pbr_vs20.inc"
 #include "pbr_ps30.inc"
 
 struct PBR_Vars_t
@@ -77,6 +77,8 @@ END_SHADER_PARAMS
 		SET_FLAGS2(MATERIAL_VAR2_SUPPORTS_HW_SKINNING);
 
 		SET_FLAGS2(MATERIAL_VAR2_LIGHTING_VERTEX_LIT);
+		//SET_FLAGS2(MATERIAL_VAR2_LIGHTING_LIGHTMAP);
+		SET_FLAGS2(MATERIAL_VAR2_LIGHTING_BUMPED_LIGHTMAP);
 		SET_FLAGS2(MATERIAL_VAR2_USES_ENV_CUBEMAP);
 		SET_FLAGS2(MATERIAL_VAR2_USE_FLASHLIGHT);
 		SET_FLAGS2(MATERIAL_VAR2_NEEDS_BAKED_LIGHTING_SNAPSHOTS);
@@ -149,9 +151,6 @@ END_SHADER_PARAMS
 				nShadowFilterMode = g_pHardwareConfig->GetShadowFilterMode();	// Based upon vendor and device dependent formats
 			}
 
-			unsigned int flags = VERTEX_POSITION | VERTEX_NORMAL;
-			int userDataSize = 0;
-
 			// Always enable...will bind white if nothing specified...
 			pShaderShadow->EnableTexture(SHADER_SAMPLER0, true);		// Base (albedo) map
 			pShaderShadow->EnableSRGBRead(SHADER_SAMPLER0, false);
@@ -179,21 +178,20 @@ END_SHADER_PARAMS
 
 			// Always enable, since flat normal will be bound
 			pShaderShadow->EnableTexture(SHADER_SAMPLER3, true);		// Normal map
-			userDataSize = 4; // tangent S
+
 			//pShaderShadow->EnableTexture(SHADER_SAMPLER5, true);		// Normalizing cube map
 			//pShaderShadow->EnableSRGBWrite(true);
 
 			// texcoord0 : base texcoord, texcoord2 : decal hw morph delta
-			int pTexCoordDim[3] = { 2, 0, 3 };
+			int pTexCoordDim[5] = { 2, 2, 3 };
 			int nTexCoordCount = 1;
 
-			// This shader supports compressed vertices, so OR in that flag:
-			flags |= VERTEX_FORMAT_COMPRESSED;
+			pShaderShadow->DrawFlags(SHADER_DRAW_POSITION | SHADER_DRAW_NORMAL | SHADER_DRAW_TEXCOORD0 | SHADER_DRAW_LIGHTMAP_TEXCOORD1);
+			unsigned int flags = VERTEX_POSITION | VERTEX_NORMAL | VERTEX_FORMAT_COMPRESSED;
+			pShaderShadow->VertexShaderVertexFormat(flags, nTexCoordCount, pTexCoordDim, 4);
 
-			pShaderShadow->VertexShaderVertexFormat(flags, nTexCoordCount, pTexCoordDim, userDataSize);
-
-			DECLARE_STATIC_VERTEX_SHADER(example_model_vs20);
-			SET_STATIC_VERTEX_SHADER(example_model_vs20);
+			DECLARE_STATIC_VERTEX_SHADER(pbr_vs20);
+			SET_STATIC_VERTEX_SHADER(pbr_vs20);
 
 			// Assume we're only going to get in here if we support 2b
 			DECLARE_STATIC_PIXEL_SHADER(pbr_ps30);
@@ -280,14 +278,15 @@ END_SHADER_PARAMS
 
 			LoadBumpLightmapCoordinateAxes_PixelShader(PSREG_CONSTANT_27);
 			s_pShaderAPI->BindStandardTexture(SHADER_SAMPLER7, TEXTURE_LIGHTMAP_BUMPED);
+			
 
-			DECLARE_DYNAMIC_VERTEX_SHADER(example_model_vs20);
+			DECLARE_DYNAMIC_VERTEX_SHADER(pbr_vs20);
 			SET_DYNAMIC_VERTEX_SHADER_COMBO(DOWATERFOG, fogIndex);
 			SET_DYNAMIC_VERTEX_SHADER_COMBO(SKINNING, numBones > 0);
 			SET_DYNAMIC_VERTEX_SHADER_COMBO(LIGHTING_PREVIEW, pShaderAPI->GetIntRenderingParameter(INT_RENDERPARM_ENABLE_FIXED_LIGHTING) != 0);
 			SET_DYNAMIC_VERTEX_SHADER_COMBO(COMPRESSED_VERTS, (int)vertexCompression);
 			SET_DYNAMIC_VERTEX_SHADER_COMBO(NUM_LIGHTS, lightState.m_nNumLights);
-			SET_DYNAMIC_VERTEX_SHADER(example_model_vs20);
+			SET_DYNAMIC_VERTEX_SHADER(pbr_vs20);
 
 			DECLARE_DYNAMIC_PIXEL_SHADER(pbr_ps30);
 			SET_DYNAMIC_PIXEL_SHADER_COMBO(NUM_LIGHTS, lightState.m_nNumLights);

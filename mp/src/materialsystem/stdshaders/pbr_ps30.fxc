@@ -27,14 +27,14 @@
 
 const float4 g_DiffuseModulation			: register( PSREG_DIFFUSE_MODULATION );
 const float4 g_ShadowTweaks					: register( PSREG_ENVMAP_TINT__SHADOW_TWEAKS );
-//const float3 cAmbientCube[6]				: register( PSREG_AMBIENT_CUBE );
+const float3 cAmbientCube[6]				: register( PSREG_AMBIENT_CUBE );
 const float4 g_EyePos						: register( PSREG_EYEPOS_SPEC_EXPONENT );
 const float4 g_FogParams					: register( PSREG_FOG_PARAMS );
 const float4 g_FlashlightAttenuationFactors	: register( PSREG_FLASHLIGHT_ATTENUATION );			// On non-flashlight pass
 const float4 g_FlashlightPos_RimBoost		: register( PSREG_FLASHLIGHT_POSITION_RIM_BOOST );
 const float4x4 g_FlashlightWorldToTexture	: register( PSREG_FLASHLIGHT_TO_WORLD_TEXTURE );
 PixelShaderLightInfo cLightInfo[3]			: register( PSREG_LIGHT_INFO_ARRAY );				// 2 registers each - 6 registers total (4th light spread across w's)
-const float4 g_LightmapCoords[3]			: register( PSREG_AMBIENT_CUBE );
+//const float4 g_LightmapCoords[3]			: register( PSREG_AMBIENT_CUBE );
 
 #define g_FlashlightPos					g_FlashlightPos_RimBoost.xyz
 #define PI								3.141592
@@ -57,6 +57,7 @@ struct PS_INPUT
 	float3 worldNormal	: TEXCOORD2;
 	float3 worldPos		: TEXCOORD3;
 	float3 projPos		: TEXCOORD4;
+	float4 lightmapTexCoord	: TEXCOORD5;
 };
 
 float3 fresnelSchlick(float3 F0, float cosTheta)
@@ -172,8 +173,9 @@ float3 calculateLight(float3 lightIn, float3 lightIntensity, float3 lightOut, fl
 
 float3 ambientLookup(float3 normal)
 {
-	float4 specularUV = float4(normal, 12.0);
-	return ENV_MAP_SCALE * texCUBElod(EnvmapSampler, specularUV);
+	return AmbientLight(normal, cAmbientCube);
+	//float4 specularUV = float4(normal, 12.0);
+	//return ENV_MAP_SCALE * texCUBElod(EnvmapSampler, specularUV);
 }
 
 float4 main( PS_INPUT i ) : COLOR
@@ -280,5 +282,9 @@ float4 main( PS_INPUT i ) : COLOR
 	bool bWriteDepthToAlpha = ( WRITE_DEPTH_TO_DESTALPHA != 0 ) && ( WRITEWATERFOGTODESTALPHA == 0 );
 	//ambientLighting = 0;
 	
+	//return i.lightmapTexCoord;
+	//return float4(g_LightmapCoords[0].x + i.baseTexCoord.x * g_LightmapCoords[0].z, g_LightmapCoords[0].z, i.baseTexCoord.x, 1);
+	//return tex2D(LightmapSampler, g_LightmapCoords[0].xy + i.baseTexCoord * g_LightmapCoords[0].z);
+
 	return FinalOutput( float4( directLighting + ambientLighting, alpha ), fogFactor, PIXELFOGTYPE, TONEMAP_SCALE_LINEAR, bWriteDepthToAlpha, i.projPos.z );	
 }
