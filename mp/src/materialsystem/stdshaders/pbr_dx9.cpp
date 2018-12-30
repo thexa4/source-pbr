@@ -293,7 +293,7 @@ END_SHADER_PARAMS
 			vEyePos_SpecExponent[3] = 0.0f;
 			pShaderAPI->SetPixelShaderConstant(PSREG_EYEPOS_SPEC_EXPONENT, vEyePos_SpecExponent, 1);
 
-			LoadBumpLightmapCoordinateAxes_PixelShader(PSREG_CONSTANT_27);
+			//LoadBumpLightmapCoordinateAxes_PixelShader(PSREG_CONSTANT_27);
 			s_pShaderAPI->BindStandardTexture(SHADER_SAMPLER7, TEXTURE_LIGHTMAP_BUMPED);
 			
 
@@ -351,7 +351,7 @@ END_SHADER_PARAMS
 				pos[1] = flashlightState.m_vecLightOrigin[1];
 				pos[2] = flashlightState.m_vecLightOrigin[2];
 				//pShaderAPI->SetPixelShaderConstant(PSREG_FLASHLIGHT_POSITION_RIM_BOOST, pos, 1);
-				pShaderAPI->SetPixelShaderConstant(PSREG_CONSTANT_27, pos, 1);
+				pShaderAPI->SetPixelShaderConstant(PSREG_SPEC_RIM_PARAMS, pos, 1);
 
 				pShaderAPI->SetPixelShaderConstant(PSREG_FLASHLIGHT_TO_WORLD_TEXTURE, worldToTexture.Base(), 4);
 
