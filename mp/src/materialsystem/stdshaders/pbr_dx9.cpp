@@ -17,6 +17,7 @@ struct PBR_Vars_t
 	PBR_Vars_t() { memset(this, 0xFF, sizeof(*this)); }
 
 	int baseTexture;
+	int baseColor;
 	int normalTexture;
 	int envMap;
 	int baseTextureFrame;
@@ -49,6 +50,7 @@ END_SHADER_PARAMS
 	void SetupVars( PBR_Vars_t& info )
 	{
 		info.baseTexture = BASETEXTURE;
+		info.baseColor = COLOR;
 		info.normalTexture = NORMALTEXTURE;
 		info.baseTextureFrame = FRAME;
 		info.baseTextureTransform = BASETEXTURETRANSFORM;
@@ -130,6 +132,7 @@ END_SHADER_PARAMS
 		bool bHasEnvTexture = (info.envMap != -1) && params[info.envMap]->IsTexture();
 		bool bIsAlphaTested = IS_FLAG_SET(MATERIAL_VAR_ALPHATEST) != 0;
 		bool bHasFlashlight = UsingFlashlight(params);
+		bool bHasColor = (info.baseColor != -1) && params[info.baseColor]->IsDefined();
 
 		BlendType_t nBlendType = EvaluateBlendRequirements(info.baseTexture, true);
 		bool bFullyOpaque = (nBlendType != BT_BLENDADD) && (nBlendType != BT_BLEND) && !bIsAlphaTested;
@@ -218,6 +221,12 @@ END_SHADER_PARAMS
 			{
 				pShaderAPI->BindStandardTexture(SHADER_SAMPLER0, TEXTURE_WHITE);
 			}
+			Vector color;
+			if (bHasColor)
+				params[info.baseColor]->GetVecValue(color.Base(), 3);
+			else
+				color = Vector{ 1.f, 1.f, 1.f };
+			pShaderAPI->SetPixelShaderConstant(PSREG_SELFILLUMTINT, color.Base());
 
 			if (bHasEnvTexture)
 				BindTexture(SHADER_SAMPLER2, info.envMap, 0);

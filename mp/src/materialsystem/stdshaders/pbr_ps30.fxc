@@ -35,6 +35,7 @@ const float4 g_FlashlightPos_RimBoost		: register( PSREG_FLASHLIGHT_POSITION_RIM
 const float4x4 g_FlashlightWorldToTexture	: register( PSREG_FLASHLIGHT_TO_WORLD_TEXTURE );
 PixelShaderLightInfo cLightInfo[3]			: register( PSREG_LIGHT_INFO_ARRAY );				// 2 registers each - 6 registers total (4th light spread across w's)
 //const float4 g_LightmapCoords[3]			: register( PSREG_AMBIENT_CUBE );
+const float4 g_BaseColor					: register( PSREG_SELFILLUMTINT );
 
 #define g_FlashlightPos					g_FlashlightPos_RimBoost.xyz
 #define PI								3.141592
@@ -109,7 +110,7 @@ inline float3x3 compute_tangent_frame(float3 vertexNormal, float3 worldPosition,
 	float2 dy_UV = ddy(UV);
 
 	float det = dot(dx_UV, float2(dy_UV.y, -dy_UV.x));
-	float sign_det = det < 0 ? -1 : 1;
+	float sign_det = det < 0 ? 1 : -1;
 
 	float2 invC0 = sign_det * float2(dy_UV.y, dx_UV.y);
 	T = sigmaX * invC0.x + sigmaY * invC0.y;
@@ -180,7 +181,7 @@ float3 ambientLookup(float3 normal)
 
 float4 main( PS_INPUT i ) : COLOR
 {
-	float4 albedo = tex2D( BaseTextureSampler, i.baseTexCoord );
+	float4 albedo = tex2D( BaseTextureSampler, i.baseTexCoord ) * g_BaseColor;
 	float3 mrao = tex2D( MRAOTextureSampler, i.baseTexCoord );
 	float metalness = g_FlashlightPos_RimBoost.z * mrao.x;
 	float roughness = g_FlashlightPos_RimBoost.a * mrao.y;
