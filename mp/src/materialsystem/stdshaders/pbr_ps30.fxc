@@ -169,7 +169,7 @@ float3 calculateLight(float3 lightIn, float3 lightIntensity, float3 lightOut, fl
 float3 specularLookup(float3 normal)
 {
 #if LIGHTMAPPED
-	float4 specularUV = float4(normal, 10.0);
+	float4 specularUV = float4(normal, 6.0);
 	float3 color = ENV_MAP_SCALE * texCUBElod(EnvmapSampler, specularUV);
 	return color;
 	//return float3(1, color.y, color.z);
@@ -202,11 +202,13 @@ float3 ambientLookup(float3 normal, float3 textureNormal, float4 lightmapTexCoor
 	lightmapColor = sample.xyz;
 	return max(0, lightmapColor * LIGHT_MAP_SCALE);
 #else
-	float4 specularUV = float4(normal, 10.0);
-	return ENV_MAP_SCALE * texCUBElod(EnvmapSampler, specularUV);
+	// HACK
+	float4 specularUV = float4(normal, 6.0);
+	float3 result = ENV_MAP_SCALE * texCUBElod(EnvmapSampler, specularUV);
 
 	//Might be better but doesn't work reliably
-	//return AmbientLight(normal, cAmbientCube);
+	result += PI * AmbientLight(normal, cAmbientCube);
+	return result;
 #endif
 }
 
@@ -238,7 +240,7 @@ float4 main( PS_INPUT i ) : COLOR
 	float3 outgoingLightDirection = normalize(g_EyePos - i.worldPos);
 	//return float4(surfTangent, 1);
 	// cosLo
-	float lightDirectionAngle = max(0.05, dot(normal, outgoingLightDirection));
+	float lightDirectionAngle = max(0, dot(normal, outgoingLightDirection));
 
 	// Lr
 	float3 specularReflectionVector = 2.0 * lightDirectionAngle * normal - outgoingLightDirection;
@@ -270,16 +272,18 @@ float4 main( PS_INPUT i ) : COLOR
 		float3 ambientLightingFresnelTerm = fresnelSchlick(fresnelReflectance, lightDirectionAngle);
 
 		// kd
-		float3 diffuseContributionFactor = lerp(1.0 - ambientLightingFresnelTerm, 0.0, metalness);
+		//HACK, metals are specular only with this.
+		//float3 diffuseContributionFactor = lerp(1.0 - ambientLightingFresnelTerm, 0.0, metalness);
+		float3 diffuseContributionFactor = 1.0 - ambientLightingFresnelTerm;
 
 		float3 diffuseIBL = diffuseContributionFactor * albedo * irradiance;
 		
-		float4 specularUV = float4(specularReflectionVector, roughness * 10.0);
+		float4 specularUV = float4(specularReflectionVector, roughness * 6.0);
 		float4 lookup = ENV_MAP_SCALE * texCUBElod(EnvmapSampler, specularUV);
 		
-		float4 specularIrradiance = lerp(lookup, float4(specularLookup(specularReflectionVector), 1.0), roughness);
+		float4 specularIrradiance = lerp(lookup, float4(specularLookup(specularReflectionVector), 1.0), roughness * roughness);
 
-		float3 specularBRDF = tex2D(PBRLookupSampler, float2(lightDirectionAngle, roughness));
+		float3 specularBRDF = tex2D(PBRLookupSampler, saturate(float2(lightDirectionAngle, roughness)));
 
 		float3 specularIBL = (fresnelReflectance * specularBRDF.x + specularBRDF.y) * specularIrradiance;
 
