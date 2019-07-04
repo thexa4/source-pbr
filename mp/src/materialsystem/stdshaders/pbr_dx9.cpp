@@ -248,8 +248,8 @@ END_SHADER_PARAMS
 
 			if (bHasMraoTexture)
 				BindTexture(SHADER_SAMPLER10, info.mraoTexture, 0);
-	  else
-	   pShaderAPI->BindStandardTexture(SHADER_SAMPLER10, TEXTURE_WHITE);
+			else
+				pShaderAPI->BindStandardTexture(SHADER_SAMPLER10, TEXTURE_WHITE);
 
 			LightState_t lightState = {0, false, false};
 			bool bFlashlightShadows = false;

@@ -35,16 +35,14 @@ const float3 cAmbientCube[6]				: register( PSREG_AMBIENT_CUBE );
 const float4 g_EyePos						: register( PSREG_EYEPOS_SPEC_EXPONENT );
 const float4 g_FogParams					: register( PSREG_FOG_PARAMS );
 const float4 g_FlashlightAttenuationFactors	: register( PSREG_FLASHLIGHT_ATTENUATION );			// On non-flashlight pass
-//const float4 g_RimBoost						: register( PSREG_FLASHLIGHT_POSITION_RIM_BOOST );
-//const float4 g_MetalnessRoughness			: register( PSREG_FLASHLIGHT_SCREEN_SCALE );
 const float4 g_FlashlightPos				: register( PSREG_SPEC_RIM_PARAMS );
 const float4x4 g_FlashlightWorldToTexture	: register( PSREG_FLASHLIGHT_TO_WORLD_TEXTURE );
 PixelShaderLightInfo cLightInfo[3]			: register( PSREG_LIGHT_INFO_ARRAY );				// 2 registers each - 6 registers total (4th light spread across w's)
-//const float4 g_LightmapCoords[3]			: register( PSREG_AMBIENT_CUBE );
 const float4 g_BaseColor					: register( PSREG_SELFILLUMTINT );
 
 static const float PI = 3.141592;
 static const float EPSILON = 0.00001;
+static const float ENVMAPLOD = 6.0;
 
 sampler BaseTextureSampler		: register( s0 );	// Base map, selfillum in alpha
 sampler NormalTextureSampler	: register( s1 );	// Normal map
@@ -54,17 +52,17 @@ sampler RandRotSampler			: register( s5 );	// RandomRotation sampler
 sampler FlashlightSampler		: register( s6 );	// Flashlight cookie 
 sampler LightmapSampler			: register( s7 );	// Lightmap
 #if EMISSION
-sampler EmissionTextureSampler  : register( s9 );	// Emission texture
+sampler EmissionTextureSampler	: register( s9 );	// Emission texture
 #endif
 sampler MRAOTextureSampler		: register( s10 );	// MRAO texture
 
 struct PS_INPUT
 {
-	float2 baseTexCoord	: TEXCOORD0;
-	float4 lightAtten	: TEXCOORD1;
-	float3 worldNormal	: TEXCOORD2;
-	float3 worldPos		: TEXCOORD3;
-	float3 projPos		: TEXCOORD4;
+	float2 baseTexCoord				: TEXCOORD0;
+	float4 lightAtten				: TEXCOORD1;
+	float3 worldNormal				: TEXCOORD2;
+	float3 worldPos					: TEXCOORD3;
+	float3 projPos					: TEXCOORD4;
 	float4 lightmapTexCoord1And2	: TEXCOORD5;
 	float4 lightmapTexCoord3		: TEXCOORD6;
 };
@@ -125,20 +123,17 @@ float3x3 compute_tangent_frame(float3 N, float3 P, float2 uv, out float3 T, out 
 float GetAttenForLight(float4 lightAtten, uint lightNum)
 {
 #if (NUM_LIGHTS > 0)
-	if (lightNum == 1) {
-		return lightAtten.y;
-	}
+	if (lightNum == 1) return lightAtten.y;
 #endif
+
 #if (NUM_LIGHTS > 1)
-	if (lightNum == 2) {
-		return lightAtten.z;
-	}
+	if (lightNum == 2) return lightAtten.z;
 #endif
+
 #if (NUM_LIGHTS > 2)
-	if (lightNum == 3) {
-		return lightAtten.a;
-	}
+	if (lightNum == 3) return lightAtten.a;
 #endif
+
 	return lightAtten.x;
 }
 
@@ -177,14 +172,12 @@ float3 calculateLight(float3 lightIn, float3 lightIntensity, float3 lightOut, fl
 float3 specularLookup(float3 normal)
 {
 #if LIGHTMAPPED
-	float4 specularUV = float4(normal, 6.0);
+	float4 specularUV = float4(normal, ENVMAPLOD);
 	float3 color = ENV_MAP_SCALE * texCUBElod(EnvmapSampler, specularUV);
 	return color;
-	//return float3(1, color.y, color.z);
 #else
 	float3 color = AmbientLight(normal, cAmbientCube);
 	return color;
-	//return float3(color.x, 1, color.z);
 #endif
 }
 
@@ -204,12 +197,11 @@ float3 EnvBRDFApprox(float3 SpecularColor, float Roughness, float NoV)
 float3 ambientLookup(float3 normal, float3 textureNormal, float4 lightmapTexCoord1And2, float4 lightmapTexCoord3)
 {
 #if LIGHTMAPPED
-	
 	float2 bumpCoord1;
 	float2 bumpCoord2;
 	float2 bumpCoord3;
 	ComputeBumpedLightmapCoordinates( lightmapTexCoord1And2, lightmapTexCoord3.xy,
-		bumpCoord1, bumpCoord2, bumpCoord3 );
+			bumpCoord1, bumpCoord2, bumpCoord3 );
 
 	float3 lightmapColor1 = LightMapSample( LightmapSampler, bumpCoord1 );
 	float3 lightmapColor2 = LightMapSample( LightmapSampler, bumpCoord2 );
@@ -218,13 +210,13 @@ float3 ambientLookup(float3 normal, float3 textureNormal, float4 lightmapTexCoor
 	float4 sample = tex2D( LightmapSampler, bumpCoord1 );
 	
 	float3 lightmapColor = textureNormal.x * lightmapColor1 +
-		textureNormal.y * lightmapColor2 +
-		textureNormal.z * lightmapColor3;
+			textureNormal.y * lightmapColor2 +
+			textureNormal.z * lightmapColor3;
 	lightmapColor = sample.xyz;
 	return max(0, lightmapColor * LIGHT_MAP_SCALE);
 #else
 	// HACK
-	float4 specularUV = float4(normal, 6.0);
+	float4 specularUV = float4(normal, ENVMAPLOD);
 	float3 result = ENV_MAP_SCALE * texCUBElod(EnvmapSampler, specularUV);
 
 	//Might be better but doesn't work reliably
@@ -257,14 +249,9 @@ float4 main( PS_INPUT i ) : COLOR
 
 	// Fixup textureNormal for ambient lighting
 	textureNormal.y *= flipSign;
-	//return float4(specularLookup(normal), 1);
-
-	//return float4(textureNormal, 1);
-	//return float4(ambientLookup(normal, textureNormal, i.lightmapTexCoord1And2, i.lightmapTexCoord3), 1);
 
 	// Lo
 	float3 outgoingLightDirection = normalize(g_EyePos - i.worldPos);
-	//return float4(surfTangent, 1);
 	// cosLo
 	float lightDirectionAngle = max(0, dot(normal, outgoingLightDirection));
 
@@ -277,16 +264,14 @@ float4 main( PS_INPUT i ) : COLOR
 
 	float3 directLighting = 0.0;
 
-	for (uint n = 0; n < NUM_LIGHTS; ++n) // now lighting works on one model but not on another??
+	for (uint n = 0; n < NUM_LIGHTS; ++n) // now lighting works on one map but not on another??
 	{
 		// Li
 		float3 LightIn = normalize(PixelShaderGetLightVector(i.worldPos, cLightInfo, n));
 		float3 LightColor = PixelShaderGetLightColor(cLightInfo, n) * GetAttenForLight(i.lightAtten, n);
 
 		directLighting += calculateLight(LightIn, LightColor, outgoingLightDirection,
-			normal, fresnelReflectance, roughness, metalness, lightDirectionAngle, albedo);
-
-		//return float4(directLighting.x + directLighting.y + directLighting.z, 0.0, 0.5, 1.0); // testing if the loop runs at all
+				normal, fresnelReflectance, roughness, metalness, lightDirectionAngle, albedo);
 	}
 
 	// Start ambient
@@ -303,7 +288,7 @@ float4 main( PS_INPUT i ) : COLOR
 
 		float3 diffuseIBL = diffuseContributionFactor * albedo * irradiance;
 
-		float4 specularUV = float4(specularReflectionVector, roughness * 6.0);
+		float4 specularUV = float4(specularReflectionVector, roughness * ENVMAPLOD);
 		float3 lookup = ENV_MAP_SCALE * texCUBElod(EnvmapSampler, specularUV).xyz;
 		float3 lookupBlurry = specularLookup(specularReflectionVector);
 
@@ -345,24 +330,18 @@ float4 main( PS_INPUT i ) : COLOR
 
 	float fogFactor = CalcPixelFogFactor( PIXELFOGTYPE, g_FogParams, g_EyePos.z, i.worldPos.z, i.projPos.z );
 
-	//float alpha = 1.0;
-	float alpha = albedo.a; // Gocnak told me to add this
+	float alpha = albedo.a;
 
 #if WRITEWATERFOGTODESTALPHA && ( PIXELFOGTYPE == PIXEL_FOG_TYPE_HEIGHT )
 	alpha = fogFactor;
 #endif
 
 	bool bWriteDepthToAlpha = ( WRITE_DEPTH_TO_DESTALPHA != 0 ) && ( WRITEWATERFOGTODESTALPHA == 0 );
-	//ambientLighting = 0;
-	
-	//return i.lightmapTexCoord;
-	//return float4(g_LightmapCoords[0].x + i.baseTexCoord.x * g_LightmapCoords[0].z, g_LightmapCoords[0].z, i.baseTexCoord.x, 1);
-	//return tex2D(LightmapSampler, g_LightmapCoords[0].xy + i.baseTexCoord * g_LightmapCoords[0].z);
+
+	float3 combinedLighting = (directLighting + ambientLighting) * ambientOcclusion;
 
 #if EMISSION
-	float3 combinedLighting = (directLighting + ambientLighting) * ambientOcclusion + emission;
-#else
-	float3 combinedLighting = (directLighting + ambientLighting) * ambientOcclusion;
+	combinedLighting += emission;
 #endif
 
 	return FinalOutput( float4( combinedLighting, alpha ), fogFactor, PIXELFOGTYPE, TONEMAP_SCALE_LINEAR, bWriteDepthToAlpha, i.projPos.z );	

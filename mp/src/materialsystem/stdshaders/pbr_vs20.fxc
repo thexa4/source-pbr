@@ -23,11 +23,11 @@ const float4 cBaseTexCoordTransform[2]		: register( SHADER_SPECIFIC_CONST_0 );
 struct VS_INPUT
 {
 	// This is all of the stuff that we ever use.
-	float4 vPos			: POSITION;
-	float4 vBoneWeights	: BLENDWEIGHT;
-	float4 vBoneIndices	: BLENDINDICES;
-	float4 vNormal		: NORMAL;
-	float2 vTexCoord0	: TEXCOORD0;
+	float4 vPos						: POSITION;
+	float4 vBoneWeights				: BLENDWEIGHT;
+	float4 vBoneIndices				: BLENDINDICES;
+	float4 vNormal					: NORMAL;
+	float2 vTexCoord0				: TEXCOORD0;
 	float4 vLightmapTexCoord		: TEXCOORD1;
 	float4 vLightmapTexCoordOffset	: TEXCOORD2;
 };
@@ -35,16 +35,16 @@ struct VS_INPUT
 struct VS_OUTPUT
 {
 	// Stuff that isn't seen by the pixel shader
-	float4 projPosSetup	: POSITION;	
-	float  fog			: FOG;
+	float4 projPosSetup				: POSITION;	
+	float  fog						: FOG;
 	// Stuff that is seen by the pixel shader
-	float2 baseTexCoord	: TEXCOORD0;
-	float4 lightAtten	: TEXCOORD1;
-	float3 worldNormal	: TEXCOORD2;
-	float3 worldPos		: TEXCOORD3;
-	float3 projPos		: TEXCOORD4;
+	float2 baseTexCoord				: TEXCOORD0;
+	float4 lightAtten				: TEXCOORD1;
+	float3 worldNormal				: TEXCOORD2;
+	float3 worldPos					: TEXCOORD3;
+	float3 projPos					: TEXCOORD4;
 	float4 lightmapTexCoord1And2	: TEXCOORD5;
-	float4 lightmapTexCoord3		: TEXCOORD6;			// and basetexcoord*mask_scale
+	float4 lightmapTexCoord3		: TEXCOORD6; // and basetexcoord*mask_scale
 };
 
 //-----------------------------------------------------------------------------
@@ -66,8 +66,6 @@ VS_OUTPUT main( const VS_INPUT v )
 	o.lightmapTexCoord1And2.z = lightmapTexCoord2.y;
 
 	o.lightmapTexCoord3.xy = lightmapTexCoord3;
-
-
 
 	float3 vNormal;
 	DecompressVertex_Normal( v.vNormal, vNormal );
