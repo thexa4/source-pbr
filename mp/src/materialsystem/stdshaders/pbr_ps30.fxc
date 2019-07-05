@@ -7,7 +7,7 @@
 // STATIC: "CONVERT_TO_SRGB"			"0..0"
 // STATIC: "FLASHLIGHT"					"0..1"
 // STATIC: "FLASHLIGHTDEPTHFILTERMODE"	"0..2"
-// STATIC: "LIGHTMAPPED"				"0..1"
+// STATIC: "USE_LIGHTMAPS"				"0..1"
 // STATIC: "EMISSION"					"0..1"
 
 // DYNAMIC: "WRITEWATERFOGTODESTALPHA"  "0..1"
@@ -26,7 +26,6 @@
 
 #include "common_flashlight_fxc.h"
 #include "common_lightmappedgeneric_fxc.h"
-#include "common_vertexlitgeneric_dx9.h"
 #include "shader_constant_register_map.h"
 
 const float4 g_DiffuseModulation			: register( PSREG_DIFFUSE_MODULATION );
@@ -42,7 +41,7 @@ const float4 g_BaseColor					: register( PSREG_SELFILLUMTINT );
 
 static const float PI = 3.141592;
 static const float EPSILON = 0.00001;
-static const float ENVMAPLOD = 6.0;
+static const float ENVMAPLOD = 6.0;		// 6 is the lowest cubemap mipmap we need. in a 256x256 cubemap, it gives us 4x4
 
 sampler BaseTextureSampler		: register( s0 );	// Base map, selfillum in alpha
 sampler NormalTextureSampler	: register( s1 );	// Normal map
@@ -156,7 +155,7 @@ float3 calculateLight(float3 lightIn, float3 lightIntensity, float3 lightOut, fl
 	float G = gaSchlickGGX(cosLightIn, lightDirectionAngle, roughness);
 
 	// Diffuse scattering happens due to light being refracted multiple times by a dielectric medium.
-	// Metals on the other hand either reflect or absorb energso diffuse contribution is alwaysy,  zero.
+	// Metals on the other hand either reflect or absorb energso diffuse contribution is always, zero.
 	// To be energy conserving we must scale diffuse BRDF contribution based on Fresnel factor & metalness.
 	float3 kd = lerp(float3(1, 1, 1) - F, float3(0, 0, 0), metalness);
 
@@ -171,7 +170,7 @@ float3 calculateLight(float3 lightIn, float3 lightIntensity, float3 lightOut, fl
 // Blurry cubemap sample / ambient cube, used to blend with the correct mipmap from the cubemap, to reduce artifacts
 float3 specularLookup(float3 normal)
 {
-#if LIGHTMAPPED
+#if USE_LIGHTMAPS
 	float4 specularUV = float4(normal, ENVMAPLOD);
 	float3 color = ENV_MAP_SCALE * texCUBElod(EnvmapSampler, specularUV);
 	return color;
@@ -196,7 +195,7 @@ float3 EnvBRDFApprox(float3 SpecularColor, float Roughness, float NoV)
 // Get ambient light
 float3 ambientLookup(float3 normal, float3 textureNormal, float4 lightmapTexCoord1And2, float4 lightmapTexCoord3)
 {
-#if LIGHTMAPPED
+#if USE_LIGHTMAPS
 	float2 bumpCoord1;
 	float2 bumpCoord2;
 	float2 bumpCoord3;
@@ -228,7 +227,6 @@ float3 ambientLookup(float3 normal, float3 textureNormal, float4 lightmapTexCoor
 // Entry point
 float4 main( PS_INPUT i ) : COLOR
 {
-
 	float4 albedo = tex2D( BaseTextureSampler, i.baseTexCoord ) * g_BaseColor;
 	float3 mrao = tex2D( MRAOTextureSampler, i.baseTexCoord ).xyz;
 	float metalness = mrao.x;
@@ -298,9 +296,11 @@ float4 main( PS_INPUT i ) : COLOR
 
 		ambientLighting = diffuseIBL + specularIBL;
 	}
+
+	ambientLighting *= ambientOcclusion;
 	// End ambient
 
-	
+	// Start flashlight
 	if ( FLASHLIGHT > 0 )
 	{
 		float4 flashlightSpacePosition = mul( float4( i.worldPos, 1.0f ), g_FlashlightWorldToTexture );
@@ -327,6 +327,7 @@ float4 main( PS_INPUT i ) : COLOR
 		directLighting += max(0, calculateLight(flashLightIn, flashLightIntensity, outgoingLightDirection,
 				normal, fresnelReflectance, roughness, metalness, lightDirectionAngle, albedo));
 	}
+	// End flashlight
 
 	float fogFactor = CalcPixelFogFactor( PIXELFOGTYPE, g_FogParams, g_EyePos.z, i.worldPos.z, i.projPos.z );
 
@@ -338,7 +339,7 @@ float4 main( PS_INPUT i ) : COLOR
 
 	bool bWriteDepthToAlpha = ( WRITE_DEPTH_TO_DESTALPHA != 0 ) && ( WRITEWATERFOGTODESTALPHA == 0 );
 
-	float3 combinedLighting = (directLighting + ambientLighting) * ambientOcclusion;
+	float3 combinedLighting = directLighting + ambientLighting;
 
 #if EMISSION
 	combinedLighting += emission;

@@ -27,6 +27,7 @@ struct PBR_Vars_t
 	int flashlightTextureFrame;
 	int emissionTexture;
 	int mraoTexture;
+	int lightMapped;
 };
 
 static ConVar mat_fullbright("mat_fullbright", "0", FCVAR_CHEAT);
@@ -35,14 +36,15 @@ static ConVar mat_specular("mat_specular", "1", FCVAR_CHEAT);
 // DEFINE_FALLBACK_SHADER( UnlitGeneric, PBR )
 BEGIN_VS_SHADER(PBR, "PBR shader")
 
-BEGIN_SHADER_PARAMS
-	SHADER_PARAM(ALPHATESTREFERENCE, SHADER_PARAM_TYPE_FLOAT, "0.0", "")
-	SHADER_PARAM(ENVMAP, SHADER_PARAM_TYPE_ENVMAP, "", "Set the cubemap for this material.")
-	SHADER_PARAM(MRAOTEXTURE, SHADER_PARAM_TYPE_TEXTURE, "",
-				 "Texture with metalness in R, roughness in G, ambient occlusion in B.")
-	SHADER_PARAM(EMISSIONTEXTURE, SHADER_PARAM_TYPE_TEXTURE, "", "Emission texture");
-	SHADER_PARAM(NORMALTEXTURE, SHADER_PARAM_TYPE_TEXTURE, "", "Normal texture");
-END_SHADER_PARAMS
+	BEGIN_SHADER_PARAMS
+		SHADER_PARAM(ALPHATESTREFERENCE, SHADER_PARAM_TYPE_FLOAT, "0.0", "");
+		SHADER_PARAM(ENVMAP, SHADER_PARAM_TYPE_ENVMAP, "", "Set the cubemap for this material.");
+		SHADER_PARAM(MRAOTEXTURE, SHADER_PARAM_TYPE_TEXTURE, "",
+				"Texture with metalness in R, roughness in G, ambient occlusion in B.");
+		SHADER_PARAM(EMISSIONTEXTURE, SHADER_PARAM_TYPE_TEXTURE, "", "Emission texture");
+		SHADER_PARAM(NORMALTEXTURE, SHADER_PARAM_TYPE_TEXTURE, "", "Normal texture");
+		SHADER_PARAM(LIGHTMAPPED, SHADER_PARAM_TYPE_BOOL, "", "");
+	END_SHADER_PARAMS
 
 	void SetupVars(PBR_Vars_t &info)
 	{
@@ -57,6 +59,7 @@ END_SHADER_PARAMS
 		info.envMap = ENVMAP;
 		info.emissionTexture = EMISSIONTEXTURE;
 		info.mraoTexture = MRAOTEXTURE;
+		info.lightMapped = LIGHTMAPPED;
 	}
 
 	SHADER_INIT_PARAMS()
@@ -75,13 +78,31 @@ END_SHADER_PARAMS
 
 		if (IS_FLAG_SET(MATERIAL_VAR_MODEL))
 		{
-			SET_FLAGS2(MATERIAL_VAR2_LIGHTING_VERTEX_LIT);
+			if (params[LIGHTMAPPED]->IsDefined())
+			{
+				if (params[LIGHTMAPPED]->GetIntValue())
+				{
+					SET_FLAGS2(MATERIAL_VAR2_LIGHTING_LIGHTMAP);
+					SET_FLAGS2(MATERIAL_VAR2_LIGHTING_BUMPED_LIGHTMAP);
+				}
+				else
+				{
+					SET_FLAGS2(MATERIAL_VAR2_LIGHTING_VERTEX_LIT);
+				}
+			}
+			else
+			{
+				params[LIGHTMAPPED]->SetIntValue(0);
+				SET_FLAGS2(MATERIAL_VAR2_LIGHTING_VERTEX_LIT);
+			}
 		}
 		else
 		{
+			params[LIGHTMAPPED]->SetIntValue(1);
 			SET_FLAGS2(MATERIAL_VAR2_LIGHTING_LIGHTMAP);
 			SET_FLAGS2(MATERIAL_VAR2_LIGHTING_BUMPED_LIGHTMAP);
 		}
+
 		SET_FLAGS2(MATERIAL_VAR2_USES_ENV_CUBEMAP);
 		SET_FLAGS2(MATERIAL_VAR2_USE_FLASHLIGHT);
 		SET_FLAGS2(MATERIAL_VAR2_NEEDS_BAKED_LIGHTING_SNAPSHOTS);
@@ -130,6 +151,7 @@ END_SHADER_PARAMS
 		bool bIsAlphaTested = IS_FLAG_SET(MATERIAL_VAR_ALPHATEST) != 0;
 		bool bHasFlashlight = UsingFlashlight(params);
 		bool bHasColor = (info.baseColor != -1) && params[info.baseColor]->IsDefined();
+		bool bLightMapped = (info.lightMapped != -1) && params[info.lightMapped]->GetIntValue();
 
 		BlendType_t nBlendType = EvaluateBlendRequirements(info.baseTexture, true);
 		bool bFullyOpaque = (nBlendType != BT_BLENDADD) && (nBlendType != BT_BLEND) && !bIsAlphaTested;
@@ -205,7 +227,7 @@ END_SHADER_PARAMS
 			DECLARE_STATIC_PIXEL_SHADER(pbr_ps30);
 			SET_STATIC_PIXEL_SHADER_COMBO(FLASHLIGHT, bHasFlashlight);
 			SET_STATIC_PIXEL_SHADER_COMBO(FLASHLIGHTDEPTHFILTERMODE, nShadowFilterMode);
-			SET_STATIC_PIXEL_SHADER_COMBO(LIGHTMAPPED, !IS_FLAG_SET(MATERIAL_VAR_MODEL));
+			SET_STATIC_PIXEL_SHADER_COMBO(USE_LIGHTMAPS, bLightMapped);
 			SET_STATIC_PIXEL_SHADER_COMBO(CONVERT_TO_SRGB, 0);
 			SET_STATIC_PIXEL_SHADER_COMBO(EMISSION, bHasEmissionTexture);
 			SET_STATIC_PIXEL_SHADER(pbr_ps30);
