@@ -1,6 +1,6 @@
 //===================== Copyright (c) Valve Corporation. All Rights Reserved. ======================
 //
-// Example vertex shader that can be applied to models
+// Physically Based Rendering vertex shader for brushes and models
 //
 //==================================================================================================
 
