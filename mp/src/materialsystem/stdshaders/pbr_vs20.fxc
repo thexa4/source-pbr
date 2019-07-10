@@ -14,7 +14,6 @@
 
 static const bool g_bSkinning		= SKINNING ? true : false;
 static const int g_FogType			= DOWATERFOG;
-
 const float4 cBaseTexCoordTransform[2]		: register( SHADER_SPECIFIC_CONST_0 );
 
 //-----------------------------------------------------------------------------
@@ -44,7 +43,7 @@ struct VS_OUTPUT
 	float3 worldPos					: TEXCOORD3;
 	float3 projPos					: TEXCOORD4;
 	float4 lightmapTexCoord1And2	: TEXCOORD5;
-	float4 lightmapTexCoord3		: TEXCOORD6; // and basetexcoord*mask_scale
+	float4 lightmapTexCoord3		: TEXCOORD6;
 };
 
 //-----------------------------------------------------------------------------
@@ -103,6 +102,7 @@ VS_OUTPUT main( const VS_INPUT v )
 	// Base texture coordinate transform
 	o.baseTexCoord.x = dot( v.vTexCoord0, cBaseTexCoordTransform[0] );
 	o.baseTexCoord.y = dot( v.vTexCoord0, cBaseTexCoordTransform[1] );
+	o.baseTexCoord = v.vTexCoord0;
 
 	return o;
 }

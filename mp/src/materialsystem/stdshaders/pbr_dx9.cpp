@@ -1,6 +1,6 @@
 //===================== Copyright (c) Valve Corporation. All Rights Reserved. ======================
 //
-// Example shader that can be applied to models
+// Physically Based Rendering shader for brushes and models
 //
 //==================================================================================================
 
@@ -86,7 +86,6 @@ BEGIN_VS_SHADER(PBR, "PBR shader")
 		SET_FLAGS2(MATERIAL_VAR2_USES_ENV_CUBEMAP);
 		SET_FLAGS2(MATERIAL_VAR2_SUPPORTS_FLASHLIGHT);
 		SET_FLAGS2(MATERIAL_VAR2_USE_FLASHLIGHT);
-		params[FLASHLIGHTTEXTURE]->SetStringValue("effects/flashlight001");
 	}
 
 	SHADER_FALLBACK { return 0; }
@@ -145,13 +144,11 @@ BEGIN_VS_SHADER(PBR, "PBR shader")
 				pShaderShadow->AlphaFunc(SHADER_ALPHAFUNC_GEQUAL, params[info.alphaTestReference]->GetFloatValue());
 			}
 
-			int nShadowFilterMode = 0;
 			SetDefaultBlendingShadowState(info.baseTexture, true);
-
+			int nShadowFilterMode = 0;
 			if (bHasFlashlight)
 			{
-				nShadowFilterMode =
-					g_pHardwareConfig->GetShadowFilterMode(); // Based upon vendor and device dependent formats
+				nShadowFilterMode = g_pHardwareConfig->GetShadowFilterMode(); // Based upon vendor and device dependent formats
 			}
 
 			// Always enable...will bind white if nothing specified...
@@ -166,7 +163,6 @@ BEGIN_VS_SHADER(PBR, "PBR shader")
 				pShaderShadow->EnableTexture(SHADER_SAMPLER5, true); // Noise map
 				pShaderShadow->EnableTexture(SHADER_SAMPLER6, true); // Flashlight cookie
 				pShaderShadow->EnableSRGBRead(SHADER_SAMPLER6, true);
-				// userDataSize = 4; // tangent S
 			}
 
 			if (bHasEnvTexture)
@@ -193,8 +189,7 @@ BEGIN_VS_SHADER(PBR, "PBR shader")
 			int pTexCoordDim[5] = {2, 2, 3};
 			int nTexCoordCount = 1;
 
-			pShaderShadow->DrawFlags(SHADER_DRAW_POSITION | SHADER_DRAW_NORMAL | SHADER_DRAW_TEXCOORD0 |
-									 SHADER_DRAW_LIGHTMAP_TEXCOORD1);
+			pShaderShadow->DrawFlags(SHADER_DRAW_POSITION | SHADER_DRAW_NORMAL | SHADER_DRAW_TEXCOORD0 | SHADER_DRAW_LIGHTMAP_TEXCOORD1);
 			unsigned int flags = VERTEX_POSITION | VERTEX_NORMAL | VERTEX_FORMAT_COMPRESSED;
 			if (IS_FLAG_SET(MATERIAL_VAR_MODEL))
 				pShaderShadow->VertexShaderVertexFormat(flags, nTexCoordCount, pTexCoordDim, 4);
@@ -212,7 +207,14 @@ BEGIN_VS_SHADER(PBR, "PBR shader")
 			SET_STATIC_PIXEL_SHADER_COMBO(EMISSION, bHasEmissionTexture);
 			SET_STATIC_PIXEL_SHADER(pbr_ps30);
 
-			DefaultFog();
+			if( bHasFlashlight )
+			{
+				FogToBlack();
+			}
+			else
+			{
+				DefaultFog();
+			}
 
 			// HACK HACK HACK - enable alpha writes all the time so that we have them for underwater stuff
 			pShaderShadow->EnableAlphaWrites(bFullyOpaque);
@@ -222,38 +224,60 @@ BEGIN_VS_SHADER(PBR, "PBR shader")
 			bool bLightingOnly = mat_fullbright.GetInt() == 2 && !IS_FLAG_SET(MATERIAL_VAR_NO_DEBUG_OVERRIDE);
 
 			if (bHasBaseTexture)
+			{
 				BindTexture(SHADER_SAMPLER0, info.baseTexture, info.baseTextureFrame);
+			}
 			else
+			{
 				pShaderAPI->BindStandardTexture(SHADER_SAMPLER0, TEXTURE_WHITE);
+			}
 
 			Vector color;
 			if (bHasColor)
+			{
 				params[info.baseColor]->GetVecValue(color.Base(), 3);
+			}
 			else
+			{
 				color = Vector{1.f, 1.f, 1.f};
+			}
 			pShaderAPI->SetPixelShaderConstant(PSREG_SELFILLUMTINT, color.Base());
 
 			if (bHasEnvTexture)
+			{
 				BindTexture(SHADER_SAMPLER2, info.envMap, 0);
+			}
 			else
+			{
 				pShaderAPI->BindStandardTexture(SHADER_SAMPLER2, TEXTURE_GREY);
+			}
 
 			if (bHasEmissionTexture)
+			{
 				BindTexture(SHADER_SAMPLER11, info.emissionTexture, 0);
+			}
 			else
+			{
 				pShaderAPI->BindStandardTexture(SHADER_SAMPLER11, TEXTURE_BLACK);
-			// no need to bind a default texture, EMISSION is a static combo in the shader
-			// I would rather just bind a black texture, but apparently TEXTURE_BLACK doesn't exist
+			}
 
 			if (bHasNormalTexture)
+			{
 				BindTexture(SHADER_SAMPLER1, info.normalTexture, 0);
+			}
 			else
+			{
 				pShaderAPI->BindStandardTexture(SHADER_SAMPLER1, TEXTURE_NORMALMAP_FLAT);
+			}
 
 			if (bHasMraoTexture)
+			{
 				BindTexture(SHADER_SAMPLER10, info.mraoTexture, 0);
+			}
 			else
+			{
 				pShaderAPI->BindStandardTexture(SHADER_SAMPLER10, TEXTURE_WHITE);
+			}
 
 			LightState_t lightState = {0, false, false};
 			pShaderAPI->GetDX9LightState(&lightState);
@@ -269,7 +293,7 @@ BEGIN_VS_SHADER(PBR, "PBR shader")
 				FlashlightState_t state = pShaderAPI->GetFlashlightStateEx(worldToTexture, &pFlashlightDepthTexture);
 				bFlashlightShadows = state.m_bEnableShadows && (pFlashlightDepthTexture != NULL);
 
-				// SetFlashLightColorFromState(state, pShaderAPI, PSREG_FLASHLIGHT_COLOR);
+				// SetFlashLightColorFromState(state, pShaderAPI, PSREG_FLASHLIGHT_COLOR); // we're not using this at the moment
 
 				if (pFlashlightDepthTexture && g_pConfig->ShadowDepthTexture() && state.m_bEnableShadows)
 				{
@@ -297,8 +321,7 @@ BEGIN_VS_SHADER(PBR, "PBR shader")
 			vEyePos_SpecExponent[3] = 0.0f;
 			pShaderAPI->SetPixelShaderConstant(PSREG_EYEPOS_SPEC_EXPONENT, vEyePos_SpecExponent, 1);
 
-			// LoadBumpLightmapCoordinateAxes_PixelShader(PSREG_CONSTANT_27);
-			s_pShaderAPI->BindStandardTexture(SHADER_SAMPLER7, TEXTURE_LIGHTMAP_BUMPED); // TEXTURE_LIGHTMAP_BUMPED_FULLBRIGHT
+			s_pShaderAPI->BindStandardTexture(SHADER_SAMPLER7, TEXTURE_LIGHTMAP_BUMPED);
 
 			DECLARE_DYNAMIC_VERTEX_SHADER(pbr_vs20);
 			SET_DYNAMIC_VERTEX_SHADER_COMBO(DOWATERFOG, fogIndex);
@@ -318,6 +341,7 @@ BEGIN_VS_SHADER(PBR, "PBR shader")
 
 			SetVertexShaderTextureTransform(VERTEX_SHADER_SHADER_SPECIFIC_CONST_0, info.baseTextureTransform);
 			SetModulationPixelShaderDynamicState_LinearColorSpace(1);
+			SetAmbientCubeDynamicStateVertexShader();
 
 			pShaderAPI->SetPixelShaderStateAmbientLightCube(PSREG_AMBIENT_CUBE, !lightState.m_bAmbientLight);
 			pShaderAPI->CommitPixelShaderLighting(PSREG_LIGHT_INFO_ARRAY);
@@ -342,7 +366,7 @@ BEGIN_VS_SHADER(PBR, "PBR shader")
 				float atten[4], pos[4], tweaks[4];
 
 				const FlashlightState_t &flashlightState = pShaderAPI->GetFlashlightState(worldToTexture);
-				// SetFlashLightColorFromState(flashlightState, pShaderAPI, PSREG_FLASHLIGHT_COLOR);
+				// SetFlashLightColorFromState(flashlightState, pShaderAPI, PSREG_FLASHLIGHT_COLOR); // we're not using this at the moment
 
 				BindTexture(SHADER_SAMPLER6, flashlightState.m_pSpotlightTexture, flashlightState.m_nSpotlightTextureFrame);
 
@@ -355,7 +379,6 @@ BEGIN_VS_SHADER(PBR, "PBR shader")
 				pos[0] = flashlightState.m_vecLightOrigin[0]; // Set the flashlight origin
 				pos[1] = flashlightState.m_vecLightOrigin[1];
 				pos[2] = flashlightState.m_vecLightOrigin[2];
-				// pShaderAPI->SetPixelShaderConstant(PSREG_FLASHLIGHT_POSITION_RIM_BOOST, pos, 1);
 				pShaderAPI->SetPixelShaderConstant(PSREG_SPEC_RIM_PARAMS, pos, 1);
 
 				pShaderAPI->SetPixelShaderConstant(PSREG_FLASHLIGHT_TO_WORLD_TEXTURE, worldToTexture.Base(), 4);

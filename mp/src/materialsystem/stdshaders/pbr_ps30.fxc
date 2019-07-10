@@ -16,13 +16,14 @@
 // DYNAMIC: "WRITE_DEPTH_TO_DESTALPHA"	"0..1"
 // DYNAMIC: "FLASHLIGHTSHADOWS"			"0..1"
 
+// Can't write fog to alpha if there is no fog
 // SKIP: ($PIXELFOGTYPE == 0) && ($WRITEWATERFOGTODESTALPHA != 0)
 // We don't care about flashlight depth unless the flashlight is on
 // SKIP: ( $FLASHLIGHT == 0 ) && ( $FLASHLIGHTSHADOWS == 1 )
 // Flashlight shadow filter mode is irrelevant if there is no flashlight
 // SKIP: ( $FLASHLIGHT == 0 ) && ( $FLASHLIGHTDEPTHFILTERMODE != 0 )
 
-#include "common_fxc.h"
+#include "common_ps_fxc.h"
 #include "common_flashlight_fxc.h"
 #include "common_lightmappedgeneric_fxc.h"
 #include "shader_constant_register_map.h"
@@ -32,7 +33,7 @@ const float4 g_ShadowTweaks					: register( PSREG_ENVMAP_TINT__SHADOW_TWEAKS );
 const float3 cAmbientCube[6]				: register( PSREG_AMBIENT_CUBE );
 const float4 g_EyePos						: register( PSREG_EYEPOS_SPEC_EXPONENT );
 const float4 g_FogParams					: register( PSREG_FOG_PARAMS );
-const float4 g_FlashlightAttenuationFactors	: register( PSREG_FLASHLIGHT_ATTENUATION );			// On non-flashlight pass
+const float4 g_FlashlightAttenuationFactors	: register( PSREG_FLASHLIGHT_ATTENUATION );
 const float4 g_FlashlightPos				: register( PSREG_SPEC_RIM_PARAMS );
 const float4x4 g_FlashlightWorldToTexture	: register( PSREG_FLASHLIGHT_TO_WORLD_TEXTURE );
 PixelShaderLightInfo cLightInfo[3]			: register( PSREG_LIGHT_INFO_ARRAY );				// 2 registers each - 6 registers total (4th light spread across w's)
@@ -117,7 +118,7 @@ float3x3 compute_tangent_frame(float3 N, float3 P, float2 uv, out float3 T, out 
 	float2 duv1 = ddx(uv);
 	float2 duv2 = ddy(uv);
 
-	sign_det = dot(dp2, cross(N, dp1));
+	sign_det = dot(dp2, cross(N, dp1)) > 0.0 ? -1 : 1;
 
 	float3x3 M = float3x3(dp1, dp2, cross(dp1, dp2));
 	float2x3 inverseM = float2x3(cross(M[1], M[2]), cross(M[2], M[0]));
@@ -204,7 +205,7 @@ float3 ambientLookup(float3 normal, float3 textureNormal, float4 lightmapTexCoor
 	diffuseLighting *= LIGHT_MAP_SCALE / sum;
 	return diffuseLighting;
 #else
-	return PI * AmbientLight(normal, cAmbientCube);;
+	return PI * AmbientLight(normal, cAmbientCube);
 #endif
 }
 
@@ -216,6 +217,10 @@ float4 main( PS_INPUT i ) : COLOR
 	float metalness = mrao.x;
 	float roughness = mrao.y;
 	float ambientOcclusion = mrao.z;
+
+#if EMISSION
+	float3 emission = tex2D( EmissionTextureSampler, i.baseTexCoord ).xyz;
+#endif
 
 	float3 surfNormal = normalize(i.worldNormal);
 	float3 surfTangent;
@@ -234,6 +239,24 @@ float4 main( PS_INPUT i ) : COLOR
 	float3 dielectricCoefficient = 0.04; //F0dielectric
 	float3 fresnelReflectance = lerp(dielectricCoefficient, albedo, metalness); // F0
 
+	// Start ambient
+	float3 ambientLighting = 0.0;
+	{
+		float3 irradiance = ambientLookup(normal, textureNormal, i.lightmapTexCoord1And2, i.lightmapTexCoord3);
+		float3 ambientLightingFresnelTerm = fresnelSchlick(fresnelReflectance, lightDirectionAngle); // F
+		float3 diffuseContributionFactor = 1.0 - ambientLightingFresnelTerm; // kd
+		float3 diffuseIBL = diffuseContributionFactor * albedo * irradiance;
+
+		float4 specularUV = float4(specularReflectionVector, roughness * ENVMAPLOD);
+		float3 lookup = ENV_MAP_SCALE * texCUBElod(EnvmapSampler, specularUV).xyz;
+		float3 specularIrradiance = lerp(lookup, irradiance, roughness * roughness); // reduces artifacts I think
+		float3 specularIBL = specularIrradiance * EnvBRDFApprox(fresnelReflectance, roughness, lightDirectionAngle);
+
+		ambientLighting = (diffuseIBL + specularIBL) * ambientOcclusion;
+	}
+	// return float4(ambientLighting, 1.0); // testing ambient lighting
+	// End ambient
+
 	// Start direct
 	float3 directLighting = 0.0;
 	for (uint n = 0; n < NUM_LIGHTS; ++n)
@@ -244,24 +267,8 @@ float4 main( PS_INPUT i ) : COLOR
 		directLighting += calculateLight(LightIn, LightColor, outgoingLightDirection,
 				normal, fresnelReflectance, roughness, metalness, lightDirectionAngle, albedo);
 	}
+	// return float4(directLighting, 1.0); // testing direct lighting
 	// End direct
-
-	// Start ambient
-	float3 ambientLighting = 0;
-	{
-		float3 irradiance = ambientLookup(normal, textureNormal, i.lightmapTexCoord1And2, i.lightmapTexCoord3);
-		float3 ambientLightingFresnelTerm = fresnelSchlick(fresnelReflectance, lightDirectionAngle); // F
-		float3 diffuseContributionFactor = 1.0 - ambientLightingFresnelTerm; // kd
-		float3 diffuseIBL = diffuseContributionFactor * albedo * irradiance;
-
-		float4 specularUV = float4(specularReflectionVector, roughness * ENVMAPLOD);
-		float3 lookup = ENV_MAP_SCALE * texCUBElod(EnvmapSampler, specularUV).xyz;
-		float3 specularIrradiance = lerp(lookup, irradiance, roughness * roughness); // reduces artifacts
-		float3 specularIBL = specularIrradiance * EnvBRDFApprox(fresnelReflectance, roughness, lightDirectionAngle);
-
-		ambientLighting = (diffuseIBL + specularIBL) * ambientOcclusion;
-	}
-	// End ambient
 
 	// Start flashlight
 	if ( FLASHLIGHT > 0 )
@@ -289,6 +296,7 @@ float4 main( PS_INPUT i ) : COLOR
 		directLighting += max(0, calculateLight(flashLightIn, flashLightIntensity, outgoingLightDirection,
 				normal, fresnelReflectance, roughness, metalness, lightDirectionAngle, albedo));
 	}
+	// return float4(directLighting, 1.0); // testing flashlight
 	// End flashlight
 
 	float fogFactor = CalcPixelFogFactor( PIXELFOGTYPE, g_FogParams, g_EyePos.z, i.worldPos.z, i.projPos.z );
@@ -304,7 +312,7 @@ float4 main( PS_INPUT i ) : COLOR
 	float3 combinedLighting = directLighting + ambientLighting;
 
 #if EMISSION
-	combinedLighting += tex2D( EmissionTextureSampler, i.baseTexCoord ).xyz;
+	combinedLighting += emission;
 #endif
 
 	return FinalOutput( float4( combinedLighting, alpha ), fogFactor, PIXELFOGTYPE, TONEMAP_SCALE_LINEAR, bWriteDepthToAlpha, i.projPos.z );	
