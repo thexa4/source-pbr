@@ -63,20 +63,22 @@ SHADER_INIT_PARAMS()
     PBR_DX9_Vars_t info;
     SetupVars(info);
 
-    // This is here for backwards compatibility
-    if (Q_strcmp(params[NORMALTEXTURE]->GetStringValue(), "") != 0)
+    // This is here for backwards compatibility.
+    if (Q_strcmp(params[NORMALTEXTURE]->GetStringValue(), "<UNDEFINED>") != 0)
     {
         params[BUMPMAP]->SetStringValue(params[NORMALTEXTURE]->GetStringValue());
     }
 
-    // Without this, dynamic lighting breaks
-    if (Q_strcmp(params[BUMPMAP]->GetStringValue(), "") == 0)
+    // Without this, dynamic lighting breaks.
+    // As far as I know the actual string value doesn't matter,
+    // but we're doing dev/flat_normal just in case.
+    if (Q_strcmp(params[BUMPMAP]->GetStringValue(), "<UNDEFINED>") == 0)
     {
         params[BUMPMAP]->SetStringValue("dev/flat_normal");
     }
 
-    // Check that the Flashlight Texture was set
-    // Using assert because if this isn't set there's something seriously wrong
+    // Check that the Flashlight Texture was set.
+    // Using assert because if this isn't set there's something seriously wrong.
     Assert(info.FlashlightTexture >= 0);
 
     // Check if the hardware supports Flashlight Border Color
