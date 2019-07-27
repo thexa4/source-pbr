@@ -23,6 +23,7 @@ struct PBR_Vars_t
 	int baseTexture;
 	int baseColor;
 	int normalTexture;
+	int bumpMap;
 	int envMap;
 	int baseTextureFrame;
 	int baseTextureTransform;
@@ -34,14 +35,16 @@ struct PBR_Vars_t
 	int useEnvAmbient;
 };
 
-BEGIN_VS_SHADER(PBR, "PBR shader");
+// DEFINE_FALLBACK_SHADER( UnlitGeneric, PBR )
+BEGIN_VS_SHADER(PBR, "PBR shader")
 
     BEGIN_SHADER_PARAMS;
 	    SHADER_PARAM(ALPHATESTREFERENCE, SHADER_PARAM_TYPE_FLOAT, "0", "");
 	    SHADER_PARAM(ENVMAP, SHADER_PARAM_TYPE_ENVMAP, "", "Set the cubemap for this material.");
 	    SHADER_PARAM(MRAOTEXTURE, SHADER_PARAM_TYPE_TEXTURE, "", "Texture with metalness in R, roughness in G, ambient occlusion in B.");
 	    SHADER_PARAM(EMISSIONTEXTURE, SHADER_PARAM_TYPE_TEXTURE, "", "Emission texture");
-        SHADER_PARAM(NORMALTEXTURE, SHADER_PARAM_TYPE_TEXTURE, "", "Normal texture");
+        SHADER_PARAM(NORMALTEXTURE, SHADER_PARAM_TYPE_TEXTURE, "", "Normal texture (deprecated, use $bumpmap)");
+		SHADER_PARAM(BUMPMAP, SHADER_PARAM_TYPE_TEXTURE, "", "Normal texture");
         SHADER_PARAM(USEENVAMBIENT, SHADER_PARAM_TYPE_BOOL, "0", "Use the cubemaps to compute ambient light.");
     END_SHADER_PARAMS;
 
@@ -50,6 +53,7 @@ BEGIN_VS_SHADER(PBR, "PBR shader");
 		info.baseTexture = BASETEXTURE;
 		info.baseColor = COLOR;
 		info.normalTexture = NORMALTEXTURE;
+		info.bumpMap = BUMPMAP;
 		info.baseTextureFrame = FRAME;
 		info.baseTextureTransform = BASETEXTURETRANSFORM;
 		info.alphaTestReference = ALPHATESTREFERENCE;
@@ -63,11 +67,13 @@ BEGIN_VS_SHADER(PBR, "PBR shader");
 
 	SHADER_INIT_PARAMS()
 	{
-        // Without this, dynamic lighting breaks
-		//const char *normalTexturePath = params[NORMALTEXTURE]->GetStringValue();
-		//if (!normalTexturePath)
-		//	normalTexturePath = "dev/flat_normal";
-        //params[BUMPMAP]->SetStringValue(normalTexturePath);
+        // Fallback for changed parameter
+		if (params[NORMALTEXTURE]->IsDefined())
+			params[BUMPMAP]->SetStringValue(params[NORMALTEXTURE]->GetStringValue());
+
+		// Dynamic lights need a bumpmap
+		if (!params[BUMPMAP]->IsDefined())
+			params[BUMPMAP]->SetStringValue("dev/flat_normal");
 
 		if (g_pHardwareConfig->SupportsBorderColor())
 		{
@@ -91,33 +97,36 @@ BEGIN_VS_SHADER(PBR, "PBR shader");
 
 		Assert(info.flashlightTexture >= 0);
 		LoadTexture(info.flashlightTexture, TEXTUREFLAGS_SRGB);
-		Assert(info.normalTexture >= 0);
-		LoadBumpMap(info.normalTexture);
+		
+		Assert(info.bumpMap >= 0);
+		LoadBumpMap(info.bumpMap);
+		
 		Assert(info.envMap >= 0);
 		int envMapFlags = g_pHardwareConfig->GetHDRType() == HDR_TYPE_NONE ? TEXTUREFLAGS_SRGB : 0;
 		envMapFlags |= TEXTUREFLAGS_ALL_MIPS;
 		LoadCubeMap(info.envMap, envMapFlags);
-		Assert(info.emissionTexture >= 0);
-		LoadTexture(info.emissionTexture, TEXTUREFLAGS_SRGB);
+		
+		if (info.emissionTexture >= 0 && params[EMISSIONTEXTURE]->IsDefined())
+			LoadTexture(info.emissionTexture, TEXTUREFLAGS_SRGB);
+
 		Assert(info.mraoTexture >= 0);
 		LoadTexture(info.mraoTexture, 0);
 
-		bool bIsBaseTextureTranslucent = false;
+		//bool bIsBaseTextureTranslucent = false;
 		if (params[info.baseTexture]->IsDefined())
 		{
 			LoadTexture(info.baseTexture, TEXTUREFLAGS_SRGB);
 
-			if (params[info.baseTexture]->GetTextureValue()->IsTranslucent())
-			{
-				bIsBaseTextureTranslucent = true;
-			}
+			//if (params[info.baseTexture]->GetTextureValue()->IsTranslucent())
+			//{
+			//	bIsBaseTextureTranslucent = true;
+			//}
 		}
 
         if (IS_FLAG_SET(MATERIAL_VAR_MODEL))
         {
             SET_FLAGS2(MATERIAL_VAR2_SUPPORTS_HW_SKINNING);             // Required for skinning
             SET_FLAGS2(MATERIAL_VAR2_LIGHTING_VERTEX_LIT);              // Required for dynamic lighting
-            SET_FLAGS2(MATERIAL_VAR2_NEEDS_TANGENT_SPACES);             // Required for dynamic lighting
             SET_FLAGS2(MATERIAL_VAR2_NEEDS_BAKED_LIGHTING_SNAPSHOTS);   // Required for ambient cube
             SET_FLAGS2(MATERIAL_VAR2_SUPPORTS_FLASHLIGHT);              // Required for flashlight
             SET_FLAGS2(MATERIAL_VAR2_USE_FLASHLIGHT);                   // Required for flashlight
@@ -126,7 +135,6 @@ BEGIN_VS_SHADER(PBR, "PBR shader");
         {
 			SET_FLAGS2(MATERIAL_VAR2_LIGHTING_LIGHTMAP);			    // Required for lightmaps
             SET_FLAGS2(MATERIAL_VAR2_LIGHTING_BUMPED_LIGHTMAP);         // Required for lightmaps
-            SET_FLAGS2(MATERIAL_VAR2_NEEDS_TANGENT_SPACES);             // Required for dynamic lighting
             SET_FLAGS2(MATERIAL_VAR2_SUPPORTS_FLASHLIGHT);              // Required for flashlight
             SET_FLAGS2(MATERIAL_VAR2_USE_FLASHLIGHT);                   // Required for flashlight
         }
@@ -148,11 +156,30 @@ BEGIN_VS_SHADER(PBR, "PBR shader");
 		bool bLightMapped = !IS_FLAG_SET(MATERIAL_VAR_MODEL);
 		bool bUseEnvAmbient = (info.useEnvAmbient != -1) && (params[info.useEnvAmbient]->GetIntValue() == 1);
 
+
+		int iEnvMapLOD = 6;
+		auto envTexture = params[info.envMap]->GetTextureValue();
+		if (envTexture)
+		{
+			// Get power of 2 of texture width;
+			int width = envTexture->GetMappingWidth();
+			int mips = 0;
+			while (width >>= 1)
+				++mips;
+
+			iEnvMapLOD = mips; //Cubemap has 4 sides so 2 mips less.
+		}
+		if (iEnvMapLOD > 12)
+			iEnvMapLOD = 12;
+		if (iEnvMapLOD < 4)
+			iEnvMapLOD = 4;
+
 		BlendType_t nBlendType = EvaluateBlendRequirements(info.baseTexture, true);
 		bool bFullyOpaque = (nBlendType != BT_BLENDADD) && (nBlendType != BT_BLEND) && !bIsAlphaTested;
 
 		if (IsSnapshotting())
 		{
+
 			pShaderShadow->EnableAlphaTest(bIsAlphaTested);
 
 			if (info.alphaTestReference != -1 && params[info.alphaTestReference]->GetFloatValue() > 0.0f)
@@ -188,17 +215,29 @@ BEGIN_VS_SHADER(PBR, "PBR shader");
 			if (bHasEnvTexture)
 			{
 				pShaderShadow->EnableTexture(SHADER_SAMPLER2, true); // Envmap
+				if (g_pHardwareConfig->GetHDRType() == HDR_TYPE_NONE)
+				{
+					pShaderShadow->EnableSRGBRead(SHADER_SAMPLER2, true); // Envmap is only sRGB with HDR disabled?
+				}
 			}
 
-			//pShaderShadow->DrawFlags(SHADER_DRAW_POSITION | SHADER_DRAW_NORMAL | SHADER_DRAW_TEXCOORD0 | SHADER_DRAW_LIGHTMAP_TEXCOORD1); // does this do anything?
+			// Enabling sRGB writing.
+			// See common_ps_fxc.h line 349.
+			// PS2b shaders and up write sRGB.
+			pShaderShadow->EnableSRGBWrite(true);
+
 			if (IS_FLAG_SET(MATERIAL_VAR_MODEL))
 			{
+				// We only need the position and surface normal.
                 unsigned int flags = VERTEX_POSITION | VERTEX_NORMAL | VERTEX_FORMAT_COMPRESSED;
+				// We need three texcoords, all in the default float2 size.
 				pShaderShadow->VertexShaderVertexFormat(flags, 1, 0, 0);
 			}
 			else
 			{
+				// We need the position, surface normal, and vertex compression format.
                 unsigned int flags = VERTEX_POSITION | VERTEX_NORMAL;
+				// We only need one texcoord, in the default float2 size.
 				pShaderShadow->VertexShaderVertexFormat(flags, 3, 0, 0);
 			}
 
@@ -280,6 +319,11 @@ BEGIN_VS_SHADER(PBR, "PBR shader");
 
 			LightState_t lightState;
 			pShaderAPI->GetDX9LightState(&lightState);
+			if (!IS_FLAG_SET(MATERIAL_VAR_MODEL))
+			{
+				lightState.m_bAmbientLight = false;
+				lightState.m_nNumLights = 0;
+			}
 
 			bool bFlashlightShadows = false;
 			if (bHasFlashlight)
@@ -317,7 +361,9 @@ BEGIN_VS_SHADER(PBR, "PBR shader");
 
 			float vEyePos_SpecExponent[4];
 			pShaderAPI->GetWorldSpaceCameraPosition(vEyePos_SpecExponent);
-			vEyePos_SpecExponent[3] = 0.0f;
+			
+			// This has some spare space
+			vEyePos_SpecExponent[3] = iEnvMapLOD;
 			pShaderAPI->SetPixelShaderConstant(PSREG_EYEPOS_SPEC_EXPONENT, vEyePos_SpecExponent, 1);
 
 			s_pShaderAPI->BindStandardTexture(SHADER_SAMPLER7, TEXTURE_LIGHTMAP_BUMPED);
@@ -343,6 +389,7 @@ BEGIN_VS_SHADER(PBR, "PBR shader");
 
             // Send ambient cube to the pixel shader, force to black if not available
             pShaderAPI->SetPixelShaderStateAmbientLightCube(PSREG_AMBIENT_CUBE, !lightState.m_bAmbientLight);
+
             // Send lighting array to the pixel shader
             pShaderAPI->CommitPixelShaderLighting(PSREG_LIGHT_INFO_ARRAY);
 
@@ -399,16 +446,6 @@ BEGIN_VS_SHADER(PBR, "PBR shader");
 				pShaderAPI->SetPixelShaderConstant(PSREG_ENVMAP_TINT__SHADOW_TWEAKS, tweaks, 1);
 			}
 
-			// Dimensions of screen, used for screen-space noise map sampling
-			// float vScreenScale[4] = { 1280.0f / 32.0f, 720.0f / 32.0f, 0, 0 };
-			// int nWidth, nHeight;
-			// pShaderAPI->GetBackBufferDimensions(nWidth, nHeight);
-			// vScreenScale[0] = (float)nWidth / 32.0f;
-			// vScreenScale[1] = (float)nHeight / 32.0f;
-			// vScreenScale[2] = (info.metalness != -1 && params[info.metalness])? params[info.metalness]->GetFloatValue()
-			// : 1.0f; vScreenScale[3] = (info.roughness != -1 && params[info.roughness]->IsDefined())?
-			// params[info.roughness]->GetFloatValue() : 1.0f;
-			// pShaderAPI->SetPixelShaderConstant(PSREG_FLASHLIGHT_SCREEN_SCALE, vScreenScale, 1);
 		}
 
 		Draw();
