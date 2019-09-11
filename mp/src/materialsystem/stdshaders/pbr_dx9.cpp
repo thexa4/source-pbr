@@ -146,7 +146,7 @@ BEGIN_VS_SHADER(PBR, "PBR shader")
 		SetupVars(info);
 
 		bool bHasBaseTexture = (info.baseTexture != -1) && params[info.baseTexture]->IsTexture();
-		bool bHasNormalTexture = (info.normalTexture != -1) && params[info.normalTexture]->IsTexture();
+		bool bHasNormalTexture = (info.bumpMap != -1) && params[info.bumpMap]->IsTexture();
 		bool bHasMraoTexture = (info.mraoTexture != -1) && params[info.mraoTexture]->IsTexture();
 		bool bHasEmissionTexture = (info.emissionTexture != -1) && params[info.emissionTexture]->IsTexture();
 		bool bHasEnvTexture = (info.envMap != -1) && params[info.envMap]->IsTexture();
@@ -301,7 +301,7 @@ BEGIN_VS_SHADER(PBR, "PBR shader")
 
 			if (bHasNormalTexture)
 			{
-				BindTexture(SHADER_SAMPLER1, info.normalTexture, 0);
+				BindTexture(SHADER_SAMPLER1, info.bumpMap, 0);
 			}
 			else
 			{
