@@ -68,14 +68,14 @@ struct PS_INPUT
 	float4 lightmapTexCoord3		: TEXCOORD6;
 };
 
-// Shlick's approximation of the Fresnel factor.
+// Shlick's approximation of the Fresnel factor
 float3 fresnelSchlick(float3 F0, float cosTheta)
 {
 	return F0 + (1.0 - F0) * pow(1.0 - cosTheta, 5.0);
 }
 
-// GGX/Towbridge-Reitz normal distribution function.
-// Uses Disney's reparametrization of alpha = roughness^2.
+// GGX/Towbridge-Reitz normal distribution function
+// Uses Disney's reparametrization of alpha = roughness^2
 float ndfGGX(float cosLh, float roughness)
 {
 	float alpha   = roughness * roughness;
@@ -85,21 +85,21 @@ float ndfGGX(float cosLh, float roughness)
 	return alphaSq / (PI * denom * denom);
 }
 
-// Single term for separable Schlick-GGX below.
+// Single term for separable Schlick-GGX below
 float gaSchlickG1(float cosTheta, float k)
 {
 	return cosTheta / (cosTheta * (1.0 - k) + k);
 }
 
-// Schlick-GGX approximation of geometric attenuation function using Smith's method.
+// Schlick-GGX approximation of geometric attenuation function using Smith's method
 float gaSchlickGGX(float cosLi, float cosLo, float roughness)
 {
 	float r = roughness + 1.0;
-	float k = (r * r) / 8.0; // Epic suggests using this roughness remapping for analytic lights.
+	float k = (r * r) / 8.0; // Epic suggests using this roughness remapping for analytic lights
 	return gaSchlickG1(cosLi, k) * gaSchlickG1(cosLo, k);
 }
 
-// Monte Carlo integration, approximate analytic version based on Dimitar Lazarov's work.
+// Monte Carlo integration, approximate analytic version based on Dimitar Lazarov's work
 // https://www.unrealengine.com/en-US/blog/physically-based-shading-on-mobile
 float3 EnvBRDFApprox(float3 SpecularColor, float Roughness, float NoV)
 {
@@ -111,8 +111,8 @@ float3 EnvBRDFApprox(float3 SpecularColor, float Roughness, float NoV)
 	return SpecularColor * AB.x + AB.y;
 }
 
-// Compute the matrix used to transform tangent space normals to world space.
-// We're doing this in the pixel shader to support both DirectX and OpenGL normal maps.
+// Compute the matrix used to transform tangent space normals to world space
+// We're doing this in the pixel shader to support both DirectX and OpenGL normal maps
 float3x3 compute_tangent_frame(float3 N, float3 P, float2 uv, out float3 T, out float3 B, out float sign_det)
 {
 	float3 dp1 = ddx(P);
@@ -131,7 +131,7 @@ float3x3 compute_tangent_frame(float3 N, float3 P, float2 uv, out float3 T, out 
 
 // Get attenuation of a light source
 // This shader version evaluates if() statements even after returning,
-// so all of this #if nonsense actually serves a purpose.
+// so all of this #if nonsense actually serves a purpose
 float GetAttenForLight(float4 lightAtten, uint lightNum)
 {
 #if (NUM_LIGHTS > 1)
@@ -157,26 +157,26 @@ float3 calculateLight(float3 lightIn, float3 lightIntensity, float3 lightOut, fl
 	float cosLightIn = max(0.0, dot(normal, lightIn));
 	float cosHalfAngle = max(0.0, dot(normal, HalfAngle));
 
-	// F - Calculate Fresnel term for direct lighting.
+	// F - Calculate Fresnel term for direct lighting
 	float3 F = fresnelSchlick(fresnelReflectance, max(0.0, dot(HalfAngle, lightOut)));
 
-	// D - Calculate normal distribution for specular BRDF.
+	// D - Calculate normal distribution for specular BRDF
 	float D = ndfGGX(cosHalfAngle, roughness);
 
-	// Calculate geometric attenuation for specular BRDF.
+	// Calculate geometric attenuation for specular BRDF
 	float G = gaSchlickGGX(cosLightIn, lightDirectionAngle, roughness);
 
-	// Diffuse scattering happens due to light being refracted multiple times by a dielectric medium.
-	// Metals on the other hand either reflect or absorb energso diffuse contribution is always, zero.
-	// To be energy conserving we must scale diffuse BRDF contribution based on Fresnel factor & metalness.
+	// Diffuse scattering happens due to light being refracted multiple times by a dielectric medium
+	// Metals on the other hand either reflect or absorb energso diffuse contribution is always, zero
+	// To be energy conserving we must scale diffuse BRDF contribution based on Fresnel factor & metalness
 	float3 kd = lerp(float3(1, 1, 1) - F, float3(0, 0, 0), metalness);
 
 	float3 diffuseBRDF = kd * albedo;
 
-	// Cook-Torrance specular microfacet BRDF.
+	// Cook-Torrance specular microfacet BRDF
 	float3 specularBRDF = (F * D * G) / max(EPSILON, 4.0 * cosLightIn * lightDirectionAngle);
 #if LIGHTMAPPED
-	// Ambient light from static lights is already precomputed in the lightmap. Don't add it again.
+	// Ambient light from static lights is already precomputed in the lightmap. Don't add it again
 	return specularBRDF * lightIntensity * cosLightIn;
 #else
 	return (diffuseBRDF + specularBRDF) * lightIntensity * cosLightIn;
