@@ -173,27 +173,6 @@ BEGIN_VS_SHADER(PBR, "PBR shader")
 		bool bLightMapped = !IS_FLAG_SET(MATERIAL_VAR_MODEL);
 		bool bUseEnvAmbient = (info.useEnvAmbient != -1) && (params[info.useEnvAmbient]->GetIntValue() == 1);
 
-        // Determining the max level of detail for the envmap
-		int iEnvMapLOD = 6;
-		auto envTexture = params[info.envMap]->GetTextureValue();
-		if (envTexture)
-		{
-			// Get power of 2 of texture width
-			int width = envTexture->GetMappingWidth();
-			int mips = 0;
-			while (width >>= 1)
-				++mips;
-
-			// Cubemap has 4 sides so 2 mips less
-			iEnvMapLOD = mips;
-		}
-
-		// Dealing with very high and low resolution cubemaps
-		if (iEnvMapLOD > 12)
-			iEnvMapLOD = 12;
-		if (iEnvMapLOD < 4)
-			iEnvMapLOD = 4;
-
 		// Determining whether we're dealing with a fully opaque material
 		BlendType_t nBlendType = EvaluateBlendRequirements(info.baseTexture, true);
 		bool bFullyOpaque = (nBlendType != BT_BLENDADD) && (nBlendType != BT_BLEND) && !bIsAlphaTested;
@@ -427,6 +406,27 @@ BEGIN_VS_SHADER(PBR, "PBR shader")
 			SET_DYNAMIC_PIXEL_SHADER_COMBO(PIXELFOGTYPE, pShaderAPI->GetPixelFogCombo());
 			SET_DYNAMIC_PIXEL_SHADER_COMBO(FLASHLIGHTSHADOWS, bFlashlightShadows);
 			SET_DYNAMIC_PIXEL_SHADER(pbr_ps30);
+
+			// Determining the max level of detail for the envmap
+			int iEnvMapLOD = 6;
+			auto envTexture = params[info.envMap]->GetTextureValue();
+			if (envTexture)
+			{
+				// Get power of 2 of texture width
+				int width = envTexture->GetMappingWidth();
+				int mips = 0;
+				while (width >>= 1)
+					++mips;
+
+				// Cubemap has 4 sides so 2 mips less
+				iEnvMapLOD = mips;
+			}
+
+			// Dealing with very high and low resolution cubemaps
+			if (iEnvMapLOD > 12)
+				iEnvMapLOD = 12;
+			if (iEnvMapLOD < 4)
+				iEnvMapLOD = 4;
 
 			// Setting up base texture transform
 			SetVertexShaderTextureTransform(VERTEX_SHADER_SHADER_SPECIFIC_CONST_0, info.baseTextureTransform);
