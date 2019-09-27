@@ -96,6 +96,10 @@ BEGIN_VS_SHADER(PBR, "PBR shader")
 		if (!params[BUMPMAP]->IsDefined())
 			params[BUMPMAP]->SetStringValue("dev/flat_normal");
 
+		// PBR relies heavily on envmaps
+		if (!params[ENVMAP]->IsDefined())
+			params[ENVMAP]->SetStringValue("env_cubemap");
+
 		// Check if the hardware supports flashlight border color
 		if (g_pHardwareConfig->SupportsBorderColor())
 		{
