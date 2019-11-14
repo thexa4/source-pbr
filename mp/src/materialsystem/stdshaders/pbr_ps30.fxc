@@ -241,7 +241,9 @@ float4 main(PS_INPUT i) : COLOR
 	#define EnvAmbientCube cAmbientCube
 #endif
 
-	float4 albedo = tex2D(BaseTextureSampler, i.baseTexCoord) * g_BaseColor;
+	float4 albedo = tex2D(BaseTextureSampler, i.baseTexCoord);
+	albedo.xyz *= g_BaseColor;
+
 	float3 mrao = tex2D(MRAOTextureSampler, i.baseTexCoord).xyz;
     float metalness = mrao.x, roughness = mrao.y, ambientOcclusion = mrao.z;
 #if EMISSIVE
