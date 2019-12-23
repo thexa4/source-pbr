@@ -397,6 +397,27 @@ BEGIN_VS_SHADER(PBR, "PBR shader")
 			float vEyePos_SpecExponent[4];
 			pShaderAPI->GetWorldSpaceCameraPosition(vEyePos_SpecExponent);
 			
+			// Determining the max level of detail for the envmap
+			int iEnvMapLOD = 6;
+			auto envTexture = params[info.envMap]->GetTextureValue();
+			if (envTexture)
+			{
+				// Get power of 2 of texture width
+				int width = envTexture->GetMappingWidth();
+				int mips = 0;
+				while (width >>= 1)
+					++mips;
+
+				// Cubemap has 4 sides so 2 mips less
+				iEnvMapLOD = mips;
+			}
+
+			// Dealing with very high and low resolution cubemaps
+			if (iEnvMapLOD > 12)
+				iEnvMapLOD = 12;
+			if (iEnvMapLOD < 4)
+				iEnvMapLOD = 4;
+			
 			// This has some spare space
 			vEyePos_SpecExponent[3] = iEnvMapLOD;
 			pShaderAPI->SetPixelShaderConstant(PSREG_EYEPOS_SPEC_EXPONENT, vEyePos_SpecExponent, 1);
@@ -421,27 +442,6 @@ BEGIN_VS_SHADER(PBR, "PBR shader")
 			SET_DYNAMIC_PIXEL_SHADER_COMBO(PIXELFOGTYPE, pShaderAPI->GetPixelFogCombo());
 			SET_DYNAMIC_PIXEL_SHADER_COMBO(FLASHLIGHTSHADOWS, bFlashlightShadows);
 			SET_DYNAMIC_PIXEL_SHADER(pbr_ps30);
-
-			// Determining the max level of detail for the envmap
-			int iEnvMapLOD = 6;
-			auto envTexture = params[info.envMap]->GetTextureValue();
-			if (envTexture)
-			{
-				// Get power of 2 of texture width
-				int width = envTexture->GetMappingWidth();
-				int mips = 0;
-				while (width >>= 1)
-					++mips;
-
-				// Cubemap has 4 sides so 2 mips less
-				iEnvMapLOD = mips;
-			}
-
-			// Dealing with very high and low resolution cubemaps
-			if (iEnvMapLOD > 12)
-				iEnvMapLOD = 12;
-			if (iEnvMapLOD < 4)
-				iEnvMapLOD = 4;
 
 			// Setting up base texture transform
 			SetVertexShaderTextureTransform(VERTEX_SHADER_SHADER_SPECIFIC_CONST_0, info.baseTextureTransform);
