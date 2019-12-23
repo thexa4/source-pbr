@@ -12,7 +12,7 @@
 #include "cpp_shader_constant_register_map.h"
 
 // Includes specific to this shader
-#include "pbr_vs20.inc"
+#include "pbr_vs30.inc"
 #include "pbr_ps30.inc"
 
 // Defining samplers
@@ -260,8 +260,8 @@ BEGIN_VS_SHADER(PBR, "PBR shader")
 			}
 
 			// Setting up static vertex shader
-			DECLARE_STATIC_VERTEX_SHADER(pbr_vs20);
-			SET_STATIC_VERTEX_SHADER(pbr_vs20);
+			DECLARE_STATIC_VERTEX_SHADER(pbr_vs30);
+			SET_STATIC_VERTEX_SHADER(pbr_vs30);
 
 			// Setting up static pixel shader
 			DECLARE_STATIC_PIXEL_SHADER(pbr_ps30);
@@ -426,13 +426,13 @@ BEGIN_VS_SHADER(PBR, "PBR shader")
 			s_pShaderAPI->BindStandardTexture(SAMPLER_LIGHTMAP, TEXTURE_LIGHTMAP_BUMPED);
 
 			// Setting up dynamic vertex shader
-			DECLARE_DYNAMIC_VERTEX_SHADER(pbr_vs20);
+			DECLARE_DYNAMIC_VERTEX_SHADER(pbr_vs30);
 			SET_DYNAMIC_VERTEX_SHADER_COMBO(DOWATERFOG, fogIndex);
 			SET_DYNAMIC_VERTEX_SHADER_COMBO(SKINNING, numBones > 0);
 			SET_DYNAMIC_VERTEX_SHADER_COMBO(LIGHTING_PREVIEW, pShaderAPI->GetIntRenderingParameter(INT_RENDERPARM_ENABLE_FIXED_LIGHTING) != 0);
 			SET_DYNAMIC_VERTEX_SHADER_COMBO(COMPRESSED_VERTS, (int)vertexCompression);
 			SET_DYNAMIC_VERTEX_SHADER_COMBO(NUM_LIGHTS, lightState.m_nNumLights);
-			SET_DYNAMIC_VERTEX_SHADER(pbr_vs20);
+			SET_DYNAMIC_VERTEX_SHADER(pbr_vs30);
 
 			// Setting up dynamic pixel shader
 			DECLARE_DYNAMIC_PIXEL_SHADER(pbr_ps30);
