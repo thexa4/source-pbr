@@ -22,7 +22,7 @@ $Project "Shaders (HL2MP)"
 		$Folder "fxc"
 		{
 			$File	"pbr_ps30.fxc"
-			$File	"pbr_vs20.fxc"
+			$File	"pbr_vs30.fxc"
 		}
 
 		$File	"stdshader_dx9_30.txt"
