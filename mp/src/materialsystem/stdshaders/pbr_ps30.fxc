@@ -170,16 +170,17 @@ float3 calculateLight(float3 lightIn, float3 lightIntensity, float3 lightOut, fl
 	// Calculate geometric attenuation for specular BRDF
 	float G = gaSchlickGGX(cosLightIn, lightDirectionAngle, roughness);
 
-	#if SPECULAR
-		float3 diffuseBRDF = albedo;
-	#else
-		// Diffuse scattering happens due to light being refracted multiple times by a dielectric medium
-		// Metals on the other hand either reflect or absorb energso diffuse contribution is always, zero
-		// To be energy conserving we must scale diffuse BRDF contribution based on Fresnel factor & metalness
-		float3 kd = lerp(float3(1, 1, 1) - F, float3(0, 0, 0), metalness);
+	// Diffuse scattering happens due to light being refracted multiple times by a dielectric medium
+	// Metals on the other hand either reflect or absorb energso diffuse contribution is always, zero
+	// To be energy conserving we must scale diffuse BRDF contribution based on Fresnel factor & metalness
+#if SPECULAR
+	// Metalness is not used if F0 map is available
+	float3 kd = float3(1, 1, 1) - F;
+#else
+	float3 kd = lerp(float3(1, 1, 1) - F, float3(0, 0, 0), metalness);
+#endif
 
-		float3 diffuseBRDF = kd * albedo;
-	#endif
+	float3 diffuseBRDF = kd * albedo;
 
 	// Cook-Torrance specular microfacet BRDF
 	float3 specularBRDF = (F * D * G) / max(EPSILON, 4.0 * cosLightIn * lightDirectionAngle);
