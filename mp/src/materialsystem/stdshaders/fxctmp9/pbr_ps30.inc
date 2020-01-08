@@ -106,6 +106,27 @@ public:
 		m_bEMISSIVE = true;
 #endif
 	}
+private:
+	int m_nSPECULAR;
+#ifdef _DEBUG
+	bool m_bSPECULAR;
+#endif
+public:
+	void SetSPECULAR( int i )
+	{
+		Assert( i >= 0 && i <= 1 );
+		m_nSPECULAR = i;
+#ifdef _DEBUG
+		m_bSPECULAR = true;
+#endif
+	}
+	void SetSPECULAR( bool i )
+	{
+		m_nSPECULAR = i ? 1 : 0;
+#ifdef _DEBUG
+		m_bSPECULAR = true;
+#endif
+	}
 public:
 	pbr_ps30_Static_Index( )
 	{
@@ -129,19 +150,23 @@ public:
 		m_bEMISSIVE = false;
 #endif // _DEBUG
 		m_nEMISSIVE = 0;
+#ifdef _DEBUG
+		m_bSPECULAR = false;
+#endif // _DEBUG
+		m_nSPECULAR = 0;
 	}
 	int GetIndex()
 	{
 		// Asserts to make sure that we aren't using any skipped combinations.
 		// Asserts to make sure that we are setting all of the combination vars.
 #ifdef _DEBUG
-		bool bAllStaticVarsDefined = m_bFLASHLIGHT && m_bFLASHLIGHTDEPTHFILTERMODE && m_bLIGHTMAPPED && m_bUSEENVAMBIENT && m_bEMISSIVE;
+		bool bAllStaticVarsDefined = m_bFLASHLIGHT && m_bFLASHLIGHTDEPTHFILTERMODE && m_bLIGHTMAPPED && m_bUSEENVAMBIENT && m_bEMISSIVE && m_bSPECULAR;
 		Assert( bAllStaticVarsDefined );
 #endif // _DEBUG
-		return ( 80 * m_nFLASHLIGHT ) + ( 160 * m_nFLASHLIGHTDEPTHFILTERMODE ) + ( 480 * m_nLIGHTMAPPED ) + ( 960 * m_nUSEENVAMBIENT ) + ( 1920 * m_nEMISSIVE ) + 0;
+		return ( 80 * m_nFLASHLIGHT ) + ( 160 * m_nFLASHLIGHTDEPTHFILTERMODE ) + ( 480 * m_nLIGHTMAPPED ) + ( 960 * m_nUSEENVAMBIENT ) + ( 1920 * m_nEMISSIVE ) + ( 3840 * m_nSPECULAR ) + 0;
 	}
 };
-#define shaderStaticTest_pbr_ps30 psh_forgot_to_set_static_FLASHLIGHT + psh_forgot_to_set_static_FLASHLIGHTDEPTHFILTERMODE + psh_forgot_to_set_static_LIGHTMAPPED + psh_forgot_to_set_static_USEENVAMBIENT + psh_forgot_to_set_static_EMISSIVE + 0
+#define shaderStaticTest_pbr_ps30 psh_forgot_to_set_static_FLASHLIGHT + psh_forgot_to_set_static_FLASHLIGHTDEPTHFILTERMODE + psh_forgot_to_set_static_LIGHTMAPPED + psh_forgot_to_set_static_USEENVAMBIENT + psh_forgot_to_set_static_EMISSIVE + psh_forgot_to_set_static_SPECULAR + 0
 class pbr_ps30_Dynamic_Index
 {
 private:

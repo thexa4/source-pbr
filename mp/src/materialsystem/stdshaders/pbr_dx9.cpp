@@ -25,6 +25,7 @@ const Sampler_t SAMPLER_FLASHLIGHT = SHADER_SAMPLER6;
 const Sampler_t SAMPLER_LIGHTMAP = SHADER_SAMPLER7;
 const Sampler_t SAMPLER_MRAO = SHADER_SAMPLER10;
 const Sampler_t SAMPLER_EMISSIVE = SHADER_SAMPLER11;
+const Sampler_t SAMPLER_SPECULAR = SHADER_SAMPLER12;
 
 // Convars
 static ConVar mat_fullbright("mat_fullbright", "0", FCVAR_CHEAT);
@@ -51,6 +52,7 @@ struct PBR_Vars_t
 	int emissionTexture;
 	int mraoTexture;
 	int useEnvAmbient;
+	int specularTexture;
 };
 
 // Beginning the shader
@@ -65,6 +67,7 @@ BEGIN_VS_SHADER(PBR, "PBR shader")
         SHADER_PARAM(NORMALTEXTURE, SHADER_PARAM_TYPE_TEXTURE, "", "Normal texture (deprecated, use $bumpmap)");
 		SHADER_PARAM(BUMPMAP, SHADER_PARAM_TYPE_TEXTURE, "", "Normal texture");
         SHADER_PARAM(USEENVAMBIENT, SHADER_PARAM_TYPE_BOOL, "0", "Use the cubemaps to compute ambient light.");
+		SHADER_PARAM(SPECULARTEXTURE, SHADER_PARAM_TYPE_TEXTURE, "", "Specular F0 RGB map");
     END_SHADER_PARAMS;
 
 	// Setting up variables for this shader
@@ -83,6 +86,7 @@ BEGIN_VS_SHADER(PBR, "PBR shader")
 		info.emissionTexture = EMISSIONTEXTURE;
 		info.mraoTexture = MRAOTEXTURE;
 		info.useEnvAmbient = USEENVAMBIENT;
+		info.specularTexture = SPECULARTEXTURE;
     };
 
 	// Initializing parameters
@@ -150,6 +154,11 @@ BEGIN_VS_SHADER(PBR, "PBR shader")
 			//}
 		}
 
+		if (params[info.specularTexture]->IsDefined())
+		{
+			LoadTexture(info.specularTexture, TEXTUREFLAGS_SRGB);
+		}
+
 		// Set material var2 flags specific to models
         if (IS_FLAG_SET(MATERIAL_VAR_MODEL))
         {
@@ -187,6 +196,7 @@ BEGIN_VS_SHADER(PBR, "PBR shader")
 		bool bHasColor = (info.baseColor != -1) && params[info.baseColor]->IsDefined();
 		bool bLightMapped = !IS_FLAG_SET(MATERIAL_VAR_MODEL);
 		bool bUseEnvAmbient = (info.useEnvAmbient != -1) && (params[info.useEnvAmbient]->GetIntValue() == 1);
+		bool bHasSpecularTexture = (info.specularTexture != -1) && params[info.specularTexture]->IsTexture();
 
 		// Determining whether we're dealing with a fully opaque material
 		BlendType_t nBlendType = EvaluateBlendRequirements(info.baseTexture, true);
@@ -217,6 +227,8 @@ BEGIN_VS_SHADER(PBR, "PBR shader")
 			pShaderShadow->EnableSRGBRead(SAMPLER_MRAO, false); // MRAO isn't sRGB
 			pShaderShadow->EnableTexture(SAMPLER_NORMAL, true); // Normal texture
 			pShaderShadow->EnableSRGBRead(SAMPLER_NORMAL, false); // Normals aren't sRGB
+			pShaderShadow->EnableTexture(SAMPLER_SPECULAR, true); // Specular F0 texture
+			pShaderShadow->EnableSRGBRead(SAMPLER_SPECULAR, true); // Specular F0 is sRGB
 
 			// If the flashlight is on, set up its textures
 			if (bHasFlashlight)
@@ -270,6 +282,7 @@ BEGIN_VS_SHADER(PBR, "PBR shader")
 			SET_STATIC_PIXEL_SHADER_COMBO(LIGHTMAPPED, bLightMapped);
 			SET_STATIC_PIXEL_SHADER_COMBO(USEENVAMBIENT, bUseEnvAmbient);
 			SET_STATIC_PIXEL_SHADER_COMBO(EMISSIVE, bHasEmissionTexture);
+			SET_STATIC_PIXEL_SHADER_COMBO(SPECULAR, bHasSpecularTexture);
 			SET_STATIC_PIXEL_SHADER(pbr_ps30);
 
 			// Setting up fog
@@ -342,6 +355,15 @@ BEGIN_VS_SHADER(PBR, "PBR shader")
 			else
 			{
 				pShaderAPI->BindStandardTexture(SAMPLER_MRAO, TEXTURE_WHITE);
+			}
+
+			if (bHasSpecularTexture)
+			{
+				BindTexture(SAMPLER_SPECULAR, info.specularTexture, 0);
+			}
+			else
+			{
+				pShaderAPI->BindStandardTexture(SAMPLER_SPECULAR, TEXTURE_BLACK);
 			}
 
 			// Getting the light state
