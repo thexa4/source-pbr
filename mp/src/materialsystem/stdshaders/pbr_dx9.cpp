@@ -190,9 +190,9 @@ BEGIN_VS_SHADER(PBR, "PBR shader")
 		bool bHasNormalTexture = (info.bumpMap != -1) && params[info.bumpMap]->IsTexture();
 		bool bHasMraoTexture = (info.mraoTexture != -1) && params[info.mraoTexture]->IsTexture();
 		bool bHasEmissionTexture = (info.emissionTexture != -1) && params[info.emissionTexture]->IsTexture();
+		bool bHasFlashlight = UsingFlashlight(params);
 		bool bHasEnvTexture = (info.envMap != -1) && params[info.envMap]->IsTexture();
 		bool bIsAlphaTested = IS_FLAG_SET(MATERIAL_VAR_ALPHATEST) != 0;
-		bool bHasFlashlight = UsingFlashlight(params);
 		bool bHasColor = (info.baseColor != -1) && params[info.baseColor]->IsDefined();
 		bool bLightMapped = !IS_FLAG_SET(MATERIAL_VAR_MODEL);
 		bool bUseEnvAmbient = (info.useEnvAmbient != -1) && (params[info.useEnvAmbient]->GetIntValue() == 1);
@@ -212,7 +212,15 @@ BEGIN_VS_SHADER(PBR, "PBR shader")
 				pShaderShadow->AlphaFunc(SHADER_ALPHAFUNC_GEQUAL, params[info.alphaTestReference]->GetFloatValue());
 			}
 
-			SetDefaultBlendingShadowState(info.baseTexture, true);
+			if ( bHasFlashlight )
+			{
+		pShaderShadow->EnableBlending( true );
+		pShaderShadow->BlendFunc( SHADER_BLEND_ONE, SHADER_BLEND_ONE );		// Additive blending
+			}
+			else
+			{
+				SetDefaultBlendingShadowState(info.baseTexture, true);
+			}
 
 			int nShadowFilterMode = bHasFlashlight ? g_pHardwareConfig->GetShadowFilterMode() : 0;
 

@@ -285,6 +285,7 @@ float4 main(PS_INPUT i) : COLOR
 
 	// Start ambient
 	float3 ambientLighting = 0.0;
+#if !FLASHLIGHT
 	{
 		float3 diffuseIrradiance = ambientLookup(normal, EnvAmbientCube, textureNormal, i.lightmapTexCoord1And2, i.lightmapTexCoord3);
         // return float4(diffuseIrradiance, 1); // testing diffuse irraciance
@@ -304,11 +305,13 @@ float4 main(PS_INPUT i) : COLOR
 
 		ambientLighting = (diffuseIBL + specularIBL) * ambientOcclusion;
 	}
-	// return float4(ambientLighting, 1.0); // testing ambient lighting
+	//return float4(ambientLighting, 1.0); // testing ambient lighting
+#endif
 	// End ambient
 
 	// Start direct
 	float3 directLighting = 0.0;
+#if !FLASHLIGHT
 	for (uint n = 0; n < NUM_LIGHTS; ++n)
 	{
 		float3 LightIn = normalize(PixelShaderGetLightVector(i.worldPos, cLightInfo, n));
@@ -318,35 +321,50 @@ float4 main(PS_INPUT i) : COLOR
 				normal, fresnelReflectance, roughness, metalness, lightDirectionAngle, albedo.rgb);
 	}
 	//return float4(directLighting, 1.0); // testing direct lighting
+#endif
 	// End direct
 
+if ( !FLASHLIGHT )
+{
+//	discard;
+}
 	// Start flashlight
     // directLighting = float3(0, 0, 0); // removing direct lighting to test only flashlight
-	if (FLASHLIGHT > 0)
-	{
+if ( FLASHLIGHT )
+{
 		float4 flashlightSpacePosition = mul(float4(i.worldPos, 1.0), g_FlashlightWorldToTexture);
+		clip( flashlightSpacePosition.w );
 		float3 vProjCoords = flashlightSpacePosition.xyz / flashlightSpacePosition.w;
 
 		float3 delta = g_FlashlightPos.xyz - i.worldPos;
 		float distSquared = dot(delta, delta);
 		float dist = sqrt(distSquared);
 
+		float3 flashlightColor = tex2D(FlashlightSampler, vProjCoords.xy);
+		flashlightColor *= cFlashlightColor.xyz;
+
+#if FLASHLIGHTSHADOWS
 		float flashlightShadow = DoFlashlightShadow(ShadowDepthSampler, RandRotSampler, vProjCoords, i.projPos, FLASHLIGHTDEPTHFILTERMODE, g_ShadowTweaks, true);
 		float flashlightAttenuated = lerp(flashlightShadow, 1.0, g_ShadowTweaks.y);	// Blend between fully attenuated and not attenuated
 		float fAtten = saturate(dot(g_FlashlightAttenuationFactors.xyz, float3(1.0, 1.0 / dist, 1.0 / distSquared)));
 		flashlightShadow = saturate(lerp(flashlightAttenuated, flashlightShadow, fAtten));	// Blend between shadow and above, according to light attenuation
 
-		float3 flashlightColor = tex2D(FlashlightSampler, vProjCoords.xy);
+		if ( flashlightShadow.r == 0 )
+			discard;
+
+		flashlightColor *= flashlightShadow;
+#endif
+		
 		float farZ = g_FlashlightAttenuationFactors.w;
 		float endFalloffFactor = RemapValClamped(dist, farZ, 0.6 * farZ, 0.0, 1.0);
 
-		float3 flashLightIntensity = flashlightColor * flashlightShadow * endFalloffFactor;
+		float3 flashLightIntensity = flashlightColor * endFalloffFactor;
 		
 		float3 flashLightIn = normalize(g_FlashlightPos.xyz - i.worldPos);
 
 		directLighting += max(0, calculateLight(flashLightIn, flashLightIntensity, outgoingLightDirection,
 				normal, fresnelReflectance, roughness, metalness, lightDirectionAngle, albedo.rgb));
-	}
+}
 	// return float4(directLighting, 1.0); // testing flashlight
 	// End flashlight
 
