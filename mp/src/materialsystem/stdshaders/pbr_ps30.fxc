@@ -341,15 +341,12 @@ float4 main(PS_INPUT i) : COLOR
 		float fAtten = saturate(dot(g_FlashlightAttenuationFactors.xyz, float3(1.0, 1.0 / dist, 1.0 / distSquared)));
 		flashlightShadow = saturate(lerp(flashlightAttenuated, flashlightShadow, fAtten));	// Blend between shadow and above, according to light attenuation
 
- 		if ( flashlightShadow.r == 0 )
-			discard;
-
 		flashlightColor *= flashlightShadow;
 #endif
 		float farZ = g_FlashlightAttenuationFactors.w;
 		float endFalloffFactor = RemapValClamped(dist, farZ, 0.6 * farZ, 0.0, 1.0);
 
-		float3 flashLightIntensity = flashlightColor * flashlightShadow * endFalloffFactor;
+		float3 flashLightIntensity = flashlightColor * endFalloffFactor;
 		
 		float3 flashLightIn = normalize(g_FlashlightPos.xyz - i.worldPos);
 
