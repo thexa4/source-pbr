@@ -212,7 +212,12 @@ BEGIN_VS_SHADER(PBR, "PBR shader")
 				pShaderShadow->AlphaFunc(SHADER_ALPHAFUNC_GEQUAL, params[info.alphaTestReference]->GetFloatValue());
 			}
 
-			SetDefaultBlendingShadowState(info.baseTexture, true);
+			if ( bHasFlashlight ) {
+				pShaderShadow->EnableBlending( true );
+				pShaderShadow->BlendFunc( SHADER_BLEND_ONE, SHADER_BLEND_ONE );		// Additive blending
+			} else {
+				SetDefaultBlendingShadowState(info.baseTexture, true);
+			}
 
 			int nShadowFilterMode = bHasFlashlight ? g_pHardwareConfig->GetShadowFilterMode() : 0;
 
