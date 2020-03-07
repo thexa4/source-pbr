@@ -7,6 +7,6 @@ PBR
 	"$envmap" "env_cubemap"
 
 	"$mraotexture" "momentum/dev_test/pbr_tile_mrao"
-	"$useparallax" "1"
-	"$parallaxheight" "-0.05"
+	"$parallax" "1"
+	"$parallaxheight" "-0.025"
 }

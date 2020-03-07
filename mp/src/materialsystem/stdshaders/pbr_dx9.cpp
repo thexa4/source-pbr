@@ -80,7 +80,7 @@ BEGIN_VS_SHADER(PBR, "PBR shader")
         SHADER_PARAM(USEENVAMBIENT, SHADER_PARAM_TYPE_BOOL, "0", "Use the cubemaps to compute ambient light.");
 		SHADER_PARAM(SPECULARTEXTURE, SHADER_PARAM_TYPE_TEXTURE, "", "Specular F0 RGB map");
 #ifdef PBRPARALLAX
-		SHADER_PARAM(USEPARALLAX, SHADER_PARAM_TYPE_BOOL, "0", "Use Parallax Occlusion Mapping.");
+		SHADER_PARAM(PARALLAX, SHADER_PARAM_TYPE_BOOL, "0", "Use Parallax Occlusion Mapping.");
 		SHADER_PARAM(PARALLAXHEIGHT, SHADER_PARAM_TYPE_FLOAT, "0.5", "Maximum Height of the Parallax Map");
 #endif
     END_SHADER_PARAMS;
@@ -103,7 +103,7 @@ BEGIN_VS_SHADER(PBR, "PBR shader")
 		info.useEnvAmbient = USEENVAMBIENT;
 		info.specularTexture = SPECULARTEXTURE;
 #ifdef PBRPARALLAX
-		info.useParallax = USEPARALLAX;
+		info.useParallax = PARALLAX;
 		info.parallaxHeight = PARALLAXHEIGHT;
 #endif
     };
