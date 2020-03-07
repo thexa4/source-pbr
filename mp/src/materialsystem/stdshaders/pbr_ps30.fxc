@@ -31,7 +31,7 @@
 #include "common_lightmappedgeneric_fxc.h"
 #include "shader_constant_register_map.h"
 
-#include "pbr_common_ps30_fxc.h"
+#include "pbr_common_ps2_3_x.h"
 
 const float4 g_DiffuseModulation				: register(PSREG_DIFFUSE_MODULATION);
 const float4 g_ShadowTweaks						: register(PSREG_ENVMAP_TINT__SHADOW_TWEAKS);
