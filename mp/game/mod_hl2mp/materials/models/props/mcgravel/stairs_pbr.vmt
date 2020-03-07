@@ -1,0 +1,9 @@
+PBR
+{
+	$basetexture "models\props\mcgravel\diamond_d"
+	$mraotexture "models\props\mcgravel\diamond_mrao"
+	$bumpmap "models\props\mcgravel\diamond_n"
+	
+	$envmap env_cubemap
+	$model 1
+}

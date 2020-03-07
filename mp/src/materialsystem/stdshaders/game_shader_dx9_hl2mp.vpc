@@ -16,13 +16,15 @@ $Project "Shaders (HL2MP)"
 		$File	"common_lightmappedgeneric_fxc.h"
 		$File	"common_flashlight_fxc.h"
 	}
-	
+
 	$Folder "Shader Source"
 	{
 		$Folder "fxc"
 		{
 			$File	"pbr_ps30.fxc"
 			$File	"pbr_vs30.fxc"
+			$File	"pbr_ps20b.fxc"
+			$File	"pbr_vs20b.fxc"
 		}
 
 		$File	"stdshader_dx9_30.txt"

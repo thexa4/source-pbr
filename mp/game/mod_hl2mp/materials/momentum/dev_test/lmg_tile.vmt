@@ -1,0 +1,10 @@
+LightmappedGeneric
+{
+	"$basetexture" "momentum/dev_test/lmg_tile_d"
+	"$bumpmap" "momentum/dev_test/lmg_tile_n"
+	"$surfaceprop" "Default"
+
+	"$envmap" "env_cubemap"
+	"$normalmapalphaenvmapmask" "1"
+	"$envmaptint" "[0.2 0.2 0.2]"
+}

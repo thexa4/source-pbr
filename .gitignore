@@ -54,3 +54,5 @@ config.cfg
 # shader files
 *.tmp
 
+mp/src/.vs/everything/v16/Browse.VC.db
+mp/src/.vs/everything/v16/Browse.VC.opendb

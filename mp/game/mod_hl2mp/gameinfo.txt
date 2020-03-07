@@ -45,8 +45,8 @@
 			// folder.
 			//
 			// Note that this folder is scanned only when the game is booted.
-			game+mod			hl2mp/custom/*
-			game+mod			hl2/custom/*
+			//game+mod			hl2mp/custom/*
+			//game+mod			hl2/custom/*
 
 			// Now search loose files.  We'll set the directory containing the gameinfo.txt file
 			// as the first "mod" search path (after any user customizations).  This is also the one

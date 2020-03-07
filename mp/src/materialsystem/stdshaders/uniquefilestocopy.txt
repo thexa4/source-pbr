@@ -1,0 +1,15 @@
+"D:\Code\renegade-code\sp\src\shadercompile"\shadercompile.exe 
+"D:\Code\renegade-code\sp\src\shadercompile"\shadercompile_dll.dll 
+"D:\Code\renegade-code\sp\src\shadercompile"\tier0.dll 
+"D:\Code\renegade-code\sp\src\shadercompile"\vstdlib.dll 
+..\..\devtools\bin\d3dx9_33.dll 
+..\..\dx10sdk\utilities\dx9_30\dx_proxy.dll 
+common_flashlight_fxc.h
+common_fxc.h
+common_hlsl_cpp_consts.h
+common_lightmappedgeneric_fxc.h
+common_pragmas.h
+common_ps_fxc.h
+common_vertexlitgeneric_dx9.h
+pbr_ps30.fxc
+shader_constant_register_map.h

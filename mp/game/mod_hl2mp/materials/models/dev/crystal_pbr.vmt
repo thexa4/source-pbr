@@ -1,0 +1,8 @@
+PBR
+{
+	$basetexture	"models/dev/crystal_bc"
+	$bumpmap		"models/dev/crystal_n"
+	$mraotexture	"models/dev/crystal_mrao"
+	$emissive		"models/dev/crystal_e"
+	$model			"1"
+}
