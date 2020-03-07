@@ -26,6 +26,11 @@ $Project "Shaders (HL2MP)"
 			$File	"pbr_ps20b.fxc"
 			$File	"pbr_vs20b.fxc"
 		}
+		
+		$Folder "Headers"
+		{
+			$File	"pbr_common_ps2_3_x.h"
+		}
 
 		$File	"stdshader_dx9_30.txt"
 	}

@@ -1,4 +1,4 @@
-//===================== Copyright (c) Valve Corporation. All Rights Reserved. ======================
+//==================================================================================================
 //
 // Physically Based Rendering vertex shader for brushes and models
 //
@@ -30,14 +30,6 @@ struct VS_INPUT
 	float2 vTexCoord0				: TEXCOORD0;
 	float4 vLightmapTexCoord		: TEXCOORD1;
 	float4 vLightmapTexCoordOffset	: TEXCOORD2;
-
-#if PARALLAXOCCLUSION
-//for parallax mapping..
-	float4 positionWS  				: POSITION;
-	float3 vNormalWS   				: NORMAL;
-	float3 vBinormalWS 				: BINORMAL;
-	float3 vTangentWS  				: TANGENT;
-#endif
 };
 
 struct VS_OUTPUT
@@ -54,7 +46,7 @@ struct VS_OUTPUT
 	float4 lightmapTexCoord1And2	: TEXCOORD5;
 	float4 lightmapTexCoord3		: TEXCOORD6;
 #if PARALLAXOCCLUSION
-	float3 vEyePosTS           		: TEXCOORD7;   
+	float3 vEyePosWS           		: TEXCOORD7;   
 #endif
 };
 
@@ -66,10 +58,8 @@ VS_OUTPUT main( const VS_INPUT v )
 	VS_OUTPUT o = ( VS_OUTPUT )0;
 
 #if PARALLAXOCCLUSION
-	float3 vViewWS = cEyePos - v.positionWS;
-	//Out.vViewWS = vViewWS;
-	float3x3 mWorldToTangent = float3x3( v.vTangentWS, v.vBinormalWS, v.vNormalWS );
-	o.vEyePosTS  = mul( mWorldToTangent, vViewWS  );
+	float3 vEyePosWS = cEyePos - v.vPos;
+	o.vEyePosWS = vEyePosWS;
 #endif
 
 	o.lightmapTexCoord3.z = dot(v.vTexCoord0, cBaseTexCoordTransform[0]) + cBaseTexCoordTransform[0].w;

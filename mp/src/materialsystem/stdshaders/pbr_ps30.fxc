@@ -1,4 +1,4 @@
-//===================== Copyright (c) Valve Corporation. All Rights Reserved. ======================
+//==================================================================================================
 //
 // Physically Based Rendering pixel shader for brushes and models
 //
@@ -11,7 +11,6 @@
 // STATIC: "EMISSIVE"					"0..1"
 // STATIC: "SPECULAR"					"0..1"
 // STATIC:  "PARALLAXOCCLUSION"			"0..1"
-
 
 // DYNAMIC: "WRITEWATERFOGTODESTALPHA"  "0..1"
 // DYNAMIC: "PIXELFOGTYPE"				"0..1"
@@ -77,7 +76,7 @@ struct PS_INPUT
 	float4 lightmapTexCoord1And2	: TEXCOORD5;
 	float4 lightmapTexCoord3		: TEXCOORD6;
 #if PARALLAXOCCLUSION
-	float3 vEyePosTS           		: TEXCOORD7;   
+	float3 vEyePosWS           		: TEXCOORD7;   
 #endif
 };
 
@@ -90,22 +89,21 @@ float4 main(PS_INPUT i) : COLOR
 #else
 	#define EnvAmbientCube cAmbientCube
 #endif
-#if PARALLAXOCCLUSION
-   	float3 viewDir = i.vEyePosTS;
-	float2 correctedTexCoord = parallaxCorrect(i.baseTexCoord, viewDir , NormalTextureSampler , PARALLAX_HEIGHT , g_ParallaxParms.r , g_ParallaxParms.g);
-#else
-	float2 correctedTexCoord = i.baseTexCoord;
-#endif
-
 
 	float3 surfNormal = normalize(i.worldNormal);
 	float3 surfTangent;
 	float3 surfBase;
 	float flipSign;
-	float3x3 normalBasis = compute_tangent_frame(surfNormal, i.worldPos, correctedTexCoord, surfTangent, surfBase, flipSign);
-	float3 textureNormal = normalize((tex2D( NormalTextureSampler, correctedTexCoord).xyz - float3(0.5, 0.5, 0.5)) * 2);
+	float3x3 normalBasis = compute_tangent_frame(surfNormal, i.worldPos, i.baseTexCoord , surfTangent, surfBase, flipSign);
+	float3 textureNormal = normalize((tex2D( NormalTextureSampler,  i.baseTexCoord).xyz - float3(0.5, 0.5, 0.5)) * 2);
 	float3 normal = normalize(mul(textureNormal, normalBasis)); // World Normal
-	textureNormal.y *= flipSign; // Fixup textureNormal for ambient lighting
+
+#if PARALLAXOCCLUSION
+   	float3 vEyePosTS = mul(i.vEyePosWS,normalBasis);
+	float2 correctedTexCoord = parallaxCorrect(i.baseTexCoord, vEyePosTS , NormalTextureSampler , PARALLAX_HEIGHT , g_ParallaxParms.r , g_ParallaxParms.g);
+#else
+	float2 correctedTexCoord = i.baseTexCoord;
+#endif
 
 	float4 albedo = tex2D(BaseTextureSampler, correctedTexCoord);
 	albedo.xyz *= g_BaseColor;
@@ -118,6 +116,8 @@ float4 main(PS_INPUT i) : COLOR
 #if SPECULAR
 	float3 specular = tex2D(SpecularTextureSampler, correctedTexCoord).xyz;
 #endif
+	
+	textureNormal.y *= flipSign; // Fixup textureNormal for ambient lighting
 
 	float3 outgoingLightDirection = normalize(g_EyePos.xyz - i.worldPos); // Lo
 	float lightDirectionAngle = max(0, dot(normal, outgoingLightDirection)); // cosLo

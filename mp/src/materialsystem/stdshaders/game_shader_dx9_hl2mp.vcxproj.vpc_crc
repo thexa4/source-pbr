@@ -1,7 +1,7 @@
 [vpc crc file version 2]
 b9c20ec3 D:\Code\source-pbr\mp\src\devtools\bin\vpc.exe
 _Nc_VS2013/vpcgame:hl2mp_
-e204dc5f game_shader_dx9_hl2mp.vpc
+800d6f38 game_shader_dx9_hl2mp.vpc
 ee98a081 ..\..\materialsystem\stdshaders\game_shader_dx9_base.vpc
 4832e67a ..\..\vpc_scripts\source_dll_base.vpc
 d752cf80 ..\..\vpc_scripts\platform_dirs.vpc

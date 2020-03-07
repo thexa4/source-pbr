@@ -13,6 +13,9 @@
     <Filter Include="Shader Source\fxc">
       <UniqueIdentifier>{4D918305-7063-E4C2-0906-D415E5F14EA3}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Shader Source\Headers">
+      <UniqueIdentifier>{A27FE43F-B148-1117-6056-5039540F8CD2}</UniqueIdentifier>
+    </Filter>
     <Filter Include="Source Files">
       <UniqueIdentifier>{BA03E055-4FA2-FCE3-8A1C-D348547D379C}</UniqueIdentifier>
     </Filter>
@@ -67,6 +70,9 @@
     </ClInclude>
     <ClInclude Include="shader_constant_register_map.h">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="pbr_common_ps2_3_x.h">
+      <Filter>Shader Source\Headers</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

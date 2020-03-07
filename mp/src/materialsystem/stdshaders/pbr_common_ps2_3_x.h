@@ -1,6 +1,6 @@
-//===================== Copyright (c) Valve Corporation. All Rights Reserved. ======================
+//==================================================================================================
 //
-// Physically Based Rendering general header for brushes and models
+// Physically Based Rendering Header for brushes and models
 //
 //==================================================================================================
 
@@ -181,7 +181,8 @@ void setupEnvMapAmbientCube(out float3 EnvAmbientCube[6], sampler EnvmapSampler)
 #if PARALLAXOCCLUSION
 float2 parallaxCorrect(float2 texCoords, float3 viewRelativeDir, sampler depthMap, float height_scale, float minLayers , float maxLayers )
 { 
-    int numLayers = (int) lerp(maxLayers, minLayers, abs(dot(float3(0.0, 0.0, 1.0), viewRelativeDir)));  
+    int numLayers =  (int) lerp(maxLayers, minLayers, abs(dot(float3(0.0, 0.0, 1.0), viewRelativeDir)));  
+
     float layerDepth = 1.0 / numLayers;
     float currentLayerDepth = 0.0;
     float2 P = viewRelativeDir.xy / viewRelativeDir.z  * (height_scale); 

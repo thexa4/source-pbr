@@ -1,4 +1,4 @@
-//===================== Copyright (c) Valve Corporation. All Rights Reserved. ======================
+//==================================================================================================
 //
 // Physically Based Rendering pixel shader for brushes and models
 //
@@ -74,24 +74,13 @@ struct PS_INPUT
 // Entry point
 float4 main(PS_INPUT i) : COLOR
 {
-
-#if PARALLAXOCCLUSION
-    //float3 viewDir = i.vViewTS;
-	//float2 correctedTexCoord = parallaxCorrect(i.baseTexCoord, viewDir , NormalTextureSampler , PARALLAX_HEIGHT , g_ParallaxParms.r , g_ParallaxParms.g);
-	//Debug Stuff - uncomment if testing shadow
-   	//correctedTexCoord = i.baseTexCoord; 
-	//float displayHeight = tex2D(MRAOTextureSampler, correctedTexCoord).a;
-#else
-	float2 correctedTexCoord = i.baseTexCoord;
-#endif
-
 #if USEENVAMBIENT
-	//float3 EnvAmbientCube[6];
-	//setupEnvMapAmbientCube(EnvAmbientCube);
     #define EnvAmbientCube cAmbientCube
 #else
 	#define EnvAmbientCube cAmbientCube
 #endif
+
+	float2 correctedTexCoord = i.baseTexCoord;
 
 	float4 albedo = tex2D(BaseTextureSampler, correctedTexCoord);
 	albedo.xyz *= g_BaseColor;
@@ -104,16 +93,9 @@ float4 main(PS_INPUT i) : COLOR
 #if SPECULAR
 	float3 specular = tex2D(SpecularTextureSampler, correctedTexCoord).xyz;
 #endif
-
-	//float3 surfNormal = normalize(i.worldNormal);
-	//float3 surfTangent;
-	//float3 surfBase;
-	//float flipSign;
-	//float3x3 normalBasis = compute_tangent_frame(surfNormal, i.worldPos, i.baseTexCoord, surfTangent, surfBase, flipSign);
     float3x3 normalBasis = float3x3(i.worldTangent, cross(i.worldNormal, i.worldTangent), i.worldNormal);
 	float3 textureNormal = normalize((tex2D( NormalTextureSampler, correctedTexCoord).xyz - float3(0.5, 0.5, 0.5)) * 2);
 	float3 normal = normalize(mul(textureNormal, normalBasis)); // World Normal
-	//textureNormal.y *= flipSign; // Fixup textureNormal for ambient lighting
 
 	float3 outgoingLightDirection = normalize(g_EyePos.xyz - i.worldPos); // Lo
 	float lightDirectionAngle = max(0, dot(normal, outgoingLightDirection)); // cosLo
@@ -123,7 +105,7 @@ float4 main(PS_INPUT i) : COLOR
 #if SPECULAR
 	float3 fresnelReflectance = specular.rgb; // F0
 #else
-	float3 dielectricCoefficient = 0.04; //F0dielectric
+	float3 dielectricCoefficient = 0.04; //F0 dielectric
 	float3 fresnelReflectance = lerp(dielectricCoefficient, albedo.rgb, metalness); // F0
 #endif
 
@@ -132,7 +114,6 @@ float4 main(PS_INPUT i) : COLOR
 	if (!FLASHLIGHT)
 	{
 		float3 diffuseIrradiance = ambientLookup(normal, EnvAmbientCube, textureNormal, i.lightmapTexCoord1And2, i.lightmapTexCoord3, LightmapSampler, g_DiffuseModulation);
-        // return float4(diffuseIrradiance, 1); // testing diffuse irraciance
 		float3 ambientLightingFresnelTerm = fresnelSchlick(fresnelReflectance, lightDirectionAngle); // F
 #if SPECULAR
 		float3 diffuseContributionFactor = 1 - ambientLightingFresnelTerm; // kd
@@ -142,7 +123,6 @@ float4 main(PS_INPUT i) : COLOR
 		float3 diffuseIBL = diffuseContributionFactor * albedo.rgb * diffuseIrradiance;
 
 		float4 specularUV = float4(specularReflectionVector, roughness * ENVMAPLOD);
-		//float3 lookupHigh = ENV_MAP_SCALE * texCUBElod(EnvmapSampler, specularUV).xyz;
         float3 lookupHigh = texCUBE(EnvmapSampler, specularReflectionVector); // Take multiple samples and average them
         float3 lookupLow = PixelShaderAmbientLight(specularReflectionVector, EnvAmbientCube);
 		float3 specularIrradiance = lerp(lookupHigh, lookupLow, roughness * roughness);
@@ -155,6 +135,7 @@ float4 main(PS_INPUT i) : COLOR
 	// Start direct
 	float3 directLighting = 0.0;
 	if (!FLASHLIGHT) {
+#if !PARALLAXOCCLUSION && !LIGHTMAPPED
 		for (int n = 0; n < NUM_LIGHTS; ++n)
 		{
 			float3 LightIn = normalize(PixelShaderGetLightVector(i.worldPos, cLightInfo, n));
@@ -163,6 +144,7 @@ float4 main(PS_INPUT i) : COLOR
 			directLighting += calculateLight(LightIn, LightColor, outgoingLightDirection,
 					normal, fresnelReflectance, roughness, metalness, lightDirectionAngle, albedo.rgb);
 		}
+#endif
 	}
 	// End direct
 
