@@ -74,6 +74,17 @@ struct PS_INPUT
 // Entry point
 float4 main(PS_INPUT i) : COLOR
 {
+
+#if PARALLAXOCCLUSION
+    //float3 viewDir = i.vViewTS;
+	//float2 correctedTexCoord = parallaxCorrect(i.baseTexCoord, viewDir , NormalTextureSampler , PARALLAX_HEIGHT , g_ParallaxParms.r , g_ParallaxParms.g);
+	//Debug Stuff - uncomment if testing shadow
+   	//correctedTexCoord = i.baseTexCoord; 
+	//float displayHeight = tex2D(MRAOTextureSampler, correctedTexCoord).a;
+#else
+	float2 correctedTexCoord = i.baseTexCoord;
+#endif
+
 #if USEENVAMBIENT
 	//float3 EnvAmbientCube[6];
 	//setupEnvMapAmbientCube(EnvAmbientCube);
@@ -82,16 +93,16 @@ float4 main(PS_INPUT i) : COLOR
 	#define EnvAmbientCube cAmbientCube
 #endif
 
-	float4 albedo = tex2D(BaseTextureSampler, i.baseTexCoord);
+	float4 albedo = tex2D(BaseTextureSampler, correctedTexCoord);
 	albedo.xyz *= g_BaseColor;
 
-	float3 mrao = tex2D(MRAOTextureSampler, i.baseTexCoord).xyz;
+	float3 mrao = tex2D(MRAOTextureSampler, correctedTexCoord).xyz;
     float metalness = mrao.x, roughness = mrao.y, ambientOcclusion = mrao.z;
 #if EMISSIVE
-	float3 emission = tex2D(EmissionTextureSampler, i.baseTexCoord).xyz;
+	float3 emission = tex2D(EmissionTextureSampler, correctedTexCoord).xyz;
 #endif
 #if SPECULAR
-	float3 specular = tex2D(SpecularTextureSampler, i.baseTexCoord).xyz;
+	float3 specular = tex2D(SpecularTextureSampler, correctedTexCoord).xyz;
 #endif
 
 	//float3 surfNormal = normalize(i.worldNormal);
@@ -100,7 +111,7 @@ float4 main(PS_INPUT i) : COLOR
 	//float flipSign;
 	//float3x3 normalBasis = compute_tangent_frame(surfNormal, i.worldPos, i.baseTexCoord, surfTangent, surfBase, flipSign);
     float3x3 normalBasis = float3x3(i.worldTangent, cross(i.worldNormal, i.worldTangent), i.worldNormal);
-	float3 textureNormal = normalize((tex2D( NormalTextureSampler, i.baseTexCoord).xyz - float3(0.5, 0.5, 0.5)) * 2);
+	float3 textureNormal = normalize((tex2D( NormalTextureSampler, correctedTexCoord).xyz - float3(0.5, 0.5, 0.5)) * 2);
 	float3 normal = normalize(mul(textureNormal, normalBasis)); // World Normal
 	//textureNormal.y *= flipSign; // Fixup textureNormal for ambient lighting
 

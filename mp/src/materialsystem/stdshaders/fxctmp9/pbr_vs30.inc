@@ -1,20 +1,47 @@
 #include "shaderlib/cshader.h"
 class pbr_vs30_Static_Index
 {
+private:
+	int m_nPARALLAXOCCLUSION;
+#ifdef _DEBUG
+	bool m_bPARALLAXOCCLUSION;
+#endif
+public:
+	void SetPARALLAXOCCLUSION( int i )
+	{
+		Assert( i >= 0 && i <= 1 );
+		m_nPARALLAXOCCLUSION = i;
+#ifdef _DEBUG
+		m_bPARALLAXOCCLUSION = true;
+#endif
+	}
+	void SetPARALLAXOCCLUSION( bool i )
+	{
+		m_nPARALLAXOCCLUSION = i ? 1 : 0;
+#ifdef _DEBUG
+		m_bPARALLAXOCCLUSION = true;
+#endif
+	}
 public:
 	pbr_vs30_Static_Index( )
 	{
+#ifdef _DEBUG
+		m_bPARALLAXOCCLUSION = false;
+#endif // _DEBUG
+		m_nPARALLAXOCCLUSION = 0;
 	}
 	int GetIndex()
 	{
 		// Asserts to make sure that we aren't using any skipped combinations.
 		// Asserts to make sure that we are setting all of the combination vars.
 #ifdef _DEBUG
+		bool bAllStaticVarsDefined = m_bPARALLAXOCCLUSION;
+		Assert( bAllStaticVarsDefined );
 #endif // _DEBUG
-		return 0;
+		return ( 80 * m_nPARALLAXOCCLUSION ) + 0;
 	}
 };
-#define shaderStaticTest_pbr_vs30 0
+#define shaderStaticTest_pbr_vs30 vsh_forgot_to_set_static_PARALLAXOCCLUSION + 0
 class pbr_vs30_Dynamic_Index
 {
 private:

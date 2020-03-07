@@ -35,6 +35,9 @@ static ConVar mat_fullbright("mat_fullbright", "0", FCVAR_CHEAT);
 static ConVar mat_specular("mat_specular", "1", FCVAR_CHEAT);
 static ConVar mat_pbr_force_20b("mat_pbr_force_20b", "0");
 
+#define PBRPARALLAX
+static ConVar mat_parallax_height("mat_parallax_height", "0");
+
 // Variables for this shader
 struct PBR_Vars_t
 {
@@ -50,6 +53,10 @@ struct PBR_Vars_t
 	int envMap;
 	int baseTextureFrame;
 	int baseTextureTransform;
+#ifdef PBRPARALLAX
+	int useParallax;
+	int parallaxHeight;
+#endif
 	int alphaTestReference;
 	int flashlightTexture;
 	int flashlightTextureFrame;
@@ -72,6 +79,10 @@ BEGIN_VS_SHADER(PBR, "PBR shader")
 		SHADER_PARAM(BUMPMAP, SHADER_PARAM_TYPE_TEXTURE, "", "Normal texture");
         SHADER_PARAM(USEENVAMBIENT, SHADER_PARAM_TYPE_BOOL, "0", "Use the cubemaps to compute ambient light.");
 		SHADER_PARAM(SPECULARTEXTURE, SHADER_PARAM_TYPE_TEXTURE, "", "Specular F0 RGB map");
+#ifdef PBRPARALLAX
+		SHADER_PARAM(USEPARALLAX, SHADER_PARAM_TYPE_BOOL, "0", "Use Parallax Occlusion Mapping.");
+		SHADER_PARAM(PARALLAXHEIGHT, SHADER_PARAM_TYPE_FLOAT, "0.5", "Maximum Height of the Parallax Map");
+#endif
     END_SHADER_PARAMS;
 
 	// Setting up variables for this shader
@@ -91,6 +102,10 @@ BEGIN_VS_SHADER(PBR, "PBR shader")
 		info.mraoTexture = MRAOTEXTURE;
 		info.useEnvAmbient = USEENVAMBIENT;
 		info.specularTexture = SPECULARTEXTURE;
+#ifdef PBRPARALLAX
+		info.useParallax = USEPARALLAX;
+		info.parallaxHeight = PARALLAXHEIGHT;
+#endif
     };
 
 	// Initializing parameters
@@ -275,11 +290,13 @@ BEGIN_VS_SHADER(PBR, "PBR shader")
 			else
 			{
 				// We need the position, surface normal, and vertex compression format
-                unsigned int flags = VERTEX_POSITION | VERTEX_NORMAL;
+				unsigned int flags = VERTEX_POSITION | VERTEX_NORMAL | VERTEX_TANGENT_S | VERTEX_TANGENT_T;
 				// We only need one texcoord, in the default float2 size
 				pShaderShadow->VertexShaderVertexFormat(flags, 3, 0, 0);
 			}
-
+#ifdef PBRPARALLAX
+			const int useParallax = params[info.useParallax]->GetIntValue();
+#endif
 			if (!g_pHardwareConfig->SupportsShaderModel_3_0() || mat_pbr_force_20b.GetBool())
 			{
 
@@ -302,6 +319,7 @@ BEGIN_VS_SHADER(PBR, "PBR shader")
 
 				// Setting up static vertex shader
 				DECLARE_STATIC_VERTEX_SHADER(pbr_vs30);
+				SET_STATIC_VERTEX_SHADER_COMBO(PARALLAXOCCLUSION, useParallax);
 				SET_STATIC_VERTEX_SHADER(pbr_vs30);
 
 
@@ -313,6 +331,7 @@ BEGIN_VS_SHADER(PBR, "PBR shader")
 						SET_STATIC_PIXEL_SHADER_COMBO(USEENVAMBIENT, bUseEnvAmbient);
 						SET_STATIC_PIXEL_SHADER_COMBO(EMISSIVE, bHasEmissionTexture);
 						SET_STATIC_PIXEL_SHADER_COMBO(SPECULAR, bHasSpecularTexture);
+						SET_STATIC_PIXEL_SHADER_COMBO(PARALLAXOCCLUSION, useParallax);
 						SET_STATIC_PIXEL_SHADER(pbr_ps30);
 
 			}
@@ -587,6 +606,15 @@ BEGIN_VS_SHADER(PBR, "PBR shader")
 				HashShadow2DJitter(flashlightState.m_flShadowJitterSeed, &tweaks[2], &tweaks[3]);
 				pShaderAPI->SetPixelShaderConstant(PSREG_ENVMAP_TINT__SHADOW_TWEAKS, tweaks, 1);
 			}
+
+#ifdef		PBRPARALLAX
+			float flParams[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
+			flParams[0] = 50;
+			flParams[1] = 50;
+			flParams[2] = GetFloatParam(info.parallaxHeight, params, 3.0f);
+
+			pShaderAPI->SetPixelShaderConstant(40, flParams, 1);
+#endif
 
 		}
 

@@ -177,3 +177,46 @@ void setupEnvMapAmbientCube(out float3 EnvAmbientCube[6], sampler EnvmapSampler)
     EnvAmbientCube[4] = ENV_MAP_SCALE * texCUBElod(EnvmapSampler, directionPosZ).rgb;
     EnvAmbientCube[5] = ENV_MAP_SCALE * texCUBElod(EnvmapSampler, directionNegZ).rgb;
 }
+
+#if PARALLAXOCCLUSION
+float2 parallaxCorrect(float2 texCoords, float3 viewRelativeDir, sampler depthMap, float height_scale, float minLayers , float maxLayers )
+{ 
+    int numLayers = (int) lerp(maxLayers, minLayers, abs(dot(float3(0.0, 0.0, 1.0), viewRelativeDir)));  
+    float layerDepth = 1.0 / numLayers;
+    float currentLayerDepth = 0.0;
+    float2 P = viewRelativeDir.xy / viewRelativeDir.z  * (height_scale); 
+    float2 deltaTexCoords = P / numLayers;
+    float2  currentTexCoords = texCoords;
+    float currentDepthMapValue = 1.0;
+    currentDepthMapValue = tex2D(depthMap, currentTexCoords);
+    int UnrollInt = 30; 
+    [unroll(UnrollInt)] while(currentLayerDepth < currentDepthMapValue)
+    {
+        currentTexCoords -= deltaTexCoords;
+        currentDepthMapValue = tex2D(depthMap, currentTexCoords).a;  //Alpha Channel of the Normal Map.
+        currentLayerDepth += layerDepth;  
+    }
+    
+    //return texCoords - currentTexCoords;
+    float2 prevTexCoords = currentTexCoords + deltaTexCoords;
+
+    // get depth after and before collision for linear interpolation
+    float afterDepth  = currentDepthMapValue - currentLayerDepth;
+    float beforeDepth = tex2D(depthMap, prevTexCoords).a - currentLayerDepth + layerDepth;
+ 
+    // interpolation of texture coordinates
+    float weight = afterDepth / (afterDepth - beforeDepth);
+    float2 finalTexCoords = prevTexCoords * weight + currentTexCoords * (1.0 - weight);
+
+    return finalTexCoords;  
+}
+#endif
+
+float3 worldToRelative(float3 worldVector, float3 surfTangent, float3 surfBasis, float3 surfNormal)
+{
+   return float3(
+       dot(worldVector, surfTangent),
+       dot(worldVector, surfBasis),
+       dot(worldVector, surfNormal)
+   );
+}
