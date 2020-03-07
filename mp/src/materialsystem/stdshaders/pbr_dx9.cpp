@@ -35,7 +35,7 @@ static ConVar mat_fullbright("mat_fullbright", "0", FCVAR_CHEAT);
 static ConVar mat_specular("mat_specular", "1", FCVAR_CHEAT);
 static ConVar mat_pbr_force_20b("mat_pbr_force_20b", "0", FCVAR_CHEAT);
 
-#define PBRPARALLAX
+static ConVar mat_pbr_parallaxmap("mat_pbr_parallaxmap", "1");
 
 // Variables for this shader
 struct PBR_Vars_t
@@ -287,8 +287,11 @@ BEGIN_VS_SHADER(PBR, "PBR shader")
 				// We only need one texcoord, in the default float2 size
 				pShaderShadow->VertexShaderVertexFormat(flags, 3, 0, 0);
 			}
-
-			const int useParallax = params[info.useParallax]->GetIntValue();
+		
+			int useParallax = params[info.useParallax]->GetIntValue();
+			if (!mat_pbr_parallaxmap.GetBool()) {
+				useParallax = 0;
+			}
 
 			if (!g_pHardwareConfig->SupportsShaderModel_3_0() || mat_pbr_force_20b.GetBool())
 			{
@@ -312,7 +315,6 @@ BEGIN_VS_SHADER(PBR, "PBR shader")
 
 				// Setting up static vertex shader
 				DECLARE_STATIC_VERTEX_SHADER(pbr_vs30);
-				SET_STATIC_VERTEX_SHADER_COMBO(PARALLAXOCCLUSION, useParallax);
 				SET_STATIC_VERTEX_SHADER(pbr_vs30);
 
 
@@ -601,10 +603,11 @@ BEGIN_VS_SHADER(PBR, "PBR shader")
 			}
 
 			float flParams[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
+			//Number of samples in the parallax occlusion
 			flParams[0] = 50;
 			flParams[1] = 50;
+			//Parallax Height
 			flParams[2] = GetFloatParam(info.parallaxHeight, params, 3.0f);
-
 			pShaderAPI->SetPixelShaderConstant(40, flParams, 1);
 
 		}

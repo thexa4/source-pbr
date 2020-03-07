@@ -191,10 +191,11 @@ float2 parallaxCorrect(float2 texCoords, float3 viewRelativeDir, sampler depthMa
     float currentDepthMapValue = 1.0;
     currentDepthMapValue = tex2D(depthMap, currentTexCoords);
     int UnrollInt = 30; 
+	
     [unroll(UnrollInt)] while(currentLayerDepth < currentDepthMapValue)
     {
         currentTexCoords -= deltaTexCoords;
-        currentDepthMapValue = tex2D(depthMap, currentTexCoords).a;  //Alpha Channel of the Normal Map.
+        currentDepthMapValue = 1 - tex2D(depthMap, currentTexCoords).a;  //Alpha Channel of the Normal Map.
         currentLayerDepth += layerDepth;  
     }
     
