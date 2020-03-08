@@ -45,7 +45,7 @@ const float4 g_BaseColor						: register(PSREG_SELFILLUMTINT);
 
 #if PARALLAXOCCLUSION
 const float4 g_ParallaxParms 					: register( c40 );
-#define PARALLAX_HEIGHT							g_ParallaxParms.b
+#define PARALLAX_HEIGHT							g_ParallaxParms.r
 #endif
 
 
@@ -96,7 +96,7 @@ float4 main(PS_INPUT i) : COLOR
 #if PARALLAXOCCLUSION
 	float3 outgoingLightRay = g_EyePos.xyz - i.worldPos;
    	float3 outgoingLightDirectionTS = mul(outgoingLightRay,normalBasis);
-	float2 correctedTexCoord = parallaxCorrect(i.baseTexCoord, outgoingLightDirectionTS , NormalTextureSampler , PARALLAX_HEIGHT , g_ParallaxParms.r , g_ParallaxParms.g);
+	float2 correctedTexCoord = parallaxCorrect(i.baseTexCoord, outgoingLightDirectionTS , NormalTextureSampler , PARALLAX_HEIGHT);
 #else
 	float2 correctedTexCoord = i.baseTexCoord;
 #endif

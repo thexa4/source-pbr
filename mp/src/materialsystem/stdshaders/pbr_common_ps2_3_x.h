@@ -179,9 +179,9 @@ void setupEnvMapAmbientCube(out float3 EnvAmbientCube[6], sampler EnvmapSampler)
 }
 
 #if PARALLAXOCCLUSION
-float2 parallaxCorrect(float2 texCoords, float3 viewRelativeDir, sampler depthMap, float height_scale, float minLayers , float maxLayers )
+float2 parallaxCorrect(float2 texCoords, float3 viewRelativeDir, sampler depthMap, float height_scale)
 { 
-    int numLayers =  (int) lerp(maxLayers, minLayers, abs(dot(float3(0.0, 0.0, 1.0), viewRelativeDir)));  
+    int numLayers =  20;  
 
     float layerDepth = 1.0 / numLayers;
     float currentLayerDepth = 0.0;
@@ -190,7 +190,7 @@ float2 parallaxCorrect(float2 texCoords, float3 viewRelativeDir, sampler depthMa
     float2  currentTexCoords = texCoords;
     float currentDepthMapValue = 1.0;
     currentDepthMapValue = tex2D(depthMap, currentTexCoords);
-    int UnrollInt = 30; 
+    int UnrollInt = numLayers; 
 	
     [unroll(UnrollInt)] while(currentLayerDepth < currentDepthMapValue)
     {

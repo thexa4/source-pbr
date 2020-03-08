@@ -603,11 +603,8 @@ BEGIN_VS_SHADER(PBR, "PBR shader")
 			}
 
 			float flParams[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
-			//Number of samples in the parallax occlusion
-			flParams[0] = 50;
-			flParams[1] = 50;
 			//Parallax Height
-			flParams[2] = GetFloatParam(info.parallaxHeight, params, 3.0f);
+			flParams[0] = GetFloatParam(info.parallaxHeight, params, 3.0f);
 			pShaderAPI->SetPixelShaderConstant(40, flParams, 1);
 
 		}
