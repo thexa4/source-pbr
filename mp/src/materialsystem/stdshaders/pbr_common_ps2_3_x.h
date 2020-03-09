@@ -179,13 +179,13 @@ void setupEnvMapAmbientCube(out float3 EnvAmbientCube[6], sampler EnvmapSampler)
 }
 
 #if PARALLAXOCCLUSION
-float2 parallaxCorrect(float2 texCoords, float3 viewRelativeDir, sampler depthMap, float height_scale)
+float2 parallaxCorrect(float2 texCoords, float3 viewRelativeDir, sampler depthMap, float PARALLAX_DEPTH, float PARALLAX_CENTER)
 { 
     int numLayers =  20;  
 
     float layerDepth = 1.0 / numLayers;
     float currentLayerDepth = 0.0;
-    float2 P = viewRelativeDir.xy / viewRelativeDir.z  * (height_scale); 
+    float2 P = viewRelativeDir.xy / viewRelativeDir.z  * (PARALLAX_DEPTH); 
     float2 deltaTexCoords = P / numLayers;
     float2  currentTexCoords = texCoords;
     float currentDepthMapValue = 1.0;
@@ -195,7 +195,7 @@ float2 parallaxCorrect(float2 texCoords, float3 viewRelativeDir, sampler depthMa
     [unroll(UnrollInt)] while(currentLayerDepth < currentDepthMapValue)
     {
         currentTexCoords -= deltaTexCoords;
-        currentDepthMapValue = 1 - tex2D(depthMap, currentTexCoords).a;  //Alpha Channel of the Normal Map.
+        currentDepthMapValue = PARALLAX_CENTER - tex2D(depthMap, currentTexCoords).a;  //Alpha Channel of the Normal Map.
         currentLayerDepth += layerDepth;  
     }
     

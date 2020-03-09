@@ -8,5 +8,7 @@ PBR
 
 	"$mraotexture" "momentum/dev_test/pbr_tile_mrao"
 	"$parallax" "1"
-	"$parallaxheight" "0.010"
+	"$parallaxdepth" "0.010"
+	"$parallaxcenter" "0.5"
+
 }

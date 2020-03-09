@@ -53,7 +53,8 @@ struct PBR_Vars_t
 	int baseTextureFrame;
 	int baseTextureTransform;
 	int useParallax;
-	int parallaxHeight;
+	int parallaxDepth;
+	int parallaxCenter;
 	int alphaTestReference;
 	int flashlightTexture;
 	int flashlightTextureFrame;
@@ -77,7 +78,8 @@ BEGIN_VS_SHADER(PBR, "PBR shader")
         SHADER_PARAM(USEENVAMBIENT, SHADER_PARAM_TYPE_BOOL, "0", "Use the cubemaps to compute ambient light.");
 		SHADER_PARAM(SPECULARTEXTURE, SHADER_PARAM_TYPE_TEXTURE, "", "Specular F0 RGB map");
 		SHADER_PARAM(PARALLAX, SHADER_PARAM_TYPE_BOOL, "0", "Use Parallax Occlusion Mapping.");
-		SHADER_PARAM(PARALLAXHEIGHT, SHADER_PARAM_TYPE_FLOAT, "0.0050", "Maximum Height of the Parallax Map");
+		SHADER_PARAM(PARALLAXDEPTH, SHADER_PARAM_TYPE_FLOAT, "0.0030", "Depth of the Parallax Map");
+		SHADER_PARAM(PARALLAXCENTER, SHADER_PARAM_TYPE_FLOAT, "0.5", "Center depth of the Parallax Map");
     END_SHADER_PARAMS;
 
 	// Setting up variables for this shader
@@ -98,7 +100,8 @@ BEGIN_VS_SHADER(PBR, "PBR shader")
 		info.useEnvAmbient = USEENVAMBIENT;
 		info.specularTexture = SPECULARTEXTURE;
 		info.useParallax = PARALLAX;
-		info.parallaxHeight = PARALLAXHEIGHT;
+		info.parallaxDepth = PARALLAXDEPTH;
+		info.parallaxCenter = PARALLAXCENTER;
     };
 
 	// Initializing parameters
@@ -609,8 +612,10 @@ BEGIN_VS_SHADER(PBR, "PBR shader")
 			}
 
 			float flParams[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
-			//Parallax Height
-			flParams[0] = GetFloatParam(info.parallaxHeight, params, 3.0f);
+			//Parallax Depth
+			flParams[0] = GetFloatParam(info.parallaxDepth, params, 3.0f);
+			//Parallax Center (part of the parallax that does not move)
+			flParams[1] = GetFloatParam(info.parallaxCenter, params, 3.0f);
 			pShaderAPI->SetPixelShaderConstant(40, flParams, 1);
 
 		}
