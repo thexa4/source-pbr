@@ -6,4 +6,5 @@ PBR
 	
 	$envmap env_cubemap
 	$model 1
+	$useenvambient 1
 }

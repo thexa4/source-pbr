@@ -6,4 +6,5 @@ VertexLitGeneric
 	"$envmap" "env_cubemap"
 	"$normalmapalphaenvmapmask" "1"
 	"$envmaptint" "[0.9 0.8 0.5]"
+$useEnvAmbient 1
 }

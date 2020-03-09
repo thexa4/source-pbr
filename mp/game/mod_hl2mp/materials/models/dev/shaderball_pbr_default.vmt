@@ -3,4 +3,6 @@ PBR
 	$basetexture	"models/dev/shaderball_default_bc"
 	$mraotexture	"models/dev/shaderball_default_mrao"
 	$model			"1"
+$useEnvAmbient 1
+
 }
