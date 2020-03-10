@@ -203,12 +203,18 @@ float4 main(PS_INPUT i) : COLOR
 	}
 	// End flashlight
 
-	float fogFactor = CalcPixelFogFactor(PIXELFOGTYPE, g_FogParams, g_EyePos.z, i.worldPos.z, i.projPos.z);
+float fogFactor = 0.0f;
+#if !FLASHLIGHT
+fogFactor = CalcPixelFogFactor(PIXELFOGTYPE, g_FogParams, g_EyePos.z, i.worldPos.z, i.projPos.z);
+#endif
 
+float alpha = 0.0f;
+#if !FLASHLIGHT
 #if WRITEWATERFOGTODESTALPHA && (PIXELFOGTYPE == PIXEL_FOG_TYPE_HEIGHT)
-	float alpha = fogFactor;
+	alpha = fogFactor;
 #else
-	float alpha = albedo.a;
+	alpha = albedo.a;
+#endif
 #endif
 
 	bool bWriteDepthToAlpha = (WRITE_DEPTH_TO_DESTALPHA != 0) && (WRITEWATERFOGTODESTALPHA == 0);
