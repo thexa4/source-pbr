@@ -7,7 +7,6 @@
 // STATIC: "FLASHLIGHT"					"0..1"
 // STATIC: "FLASHLIGHTDEPTHFILTERMODE"	"0..2"
 // STATIC: "LIGHTMAPPED"				"0..1"
-// STATIC: "USEENVAMBIENT"				"0..1"
 // STATIC: "EMISSIVE"					"0..1"
 // STATIC: "SPECULAR"					"0..1"
 
@@ -74,12 +73,6 @@ struct PS_INPUT
 // Entry point
 float4 main(PS_INPUT i) : COLOR
 {
-#if USEENVAMBIENT
-    #define EnvAmbientCube cAmbientCube
-#else
-	#define EnvAmbientCube cAmbientCube
-#endif
-
 	float2 correctedTexCoord = i.baseTexCoord;
 
 	float4 albedo = tex2D(BaseTextureSampler, correctedTexCoord);
@@ -113,7 +106,7 @@ float4 main(PS_INPUT i) : COLOR
 	float3 ambientLighting = 0.0;
 	if (!FLASHLIGHT)
 	{
-		float3 diffuseIrradiance = ambientLookup(normal, EnvAmbientCube, textureNormal, i.lightmapTexCoord1And2, i.lightmapTexCoord3, LightmapSampler, g_DiffuseModulation);
+		float3 diffuseIrradiance = ambientLookup(normal, cAmbientCube, textureNormal, i.lightmapTexCoord1And2, i.lightmapTexCoord3, LightmapSampler, g_DiffuseModulation);
 		float3 ambientLightingFresnelTerm = fresnelSchlick(fresnelReflectance, lightDirectionAngle); // F
 #if SPECULAR
 		float3 diffuseContributionFactor = 1 - ambientLightingFresnelTerm; // kd
@@ -124,7 +117,7 @@ float4 main(PS_INPUT i) : COLOR
 
 		float4 specularUV = float4(specularReflectionVector, roughness * ENVMAPLOD);
         float3 lookupHigh = texCUBE(EnvmapSampler, specularReflectionVector); // Take multiple samples and average them
-        float3 lookupLow = PixelShaderAmbientLight(specularReflectionVector, EnvAmbientCube);
+        float3 lookupLow = PixelShaderAmbientLight(specularReflectionVector, cAmbientCube);
 		float3 specularIrradiance = lerp(lookupHigh, lookupLow, roughness * roughness);
 		float3 specularIBL = specularIrradiance * EnvBRDFApprox(fresnelReflectance, roughness, lightDirectionAngle);
 
