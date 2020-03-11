@@ -116,7 +116,8 @@ float4 main(PS_INPUT i) : COLOR
 		float3 diffuseIBL = diffuseContributionFactor * albedo.rgb * diffuseIrradiance;
 
 		float4 specularUV = float4(specularReflectionVector, roughness * ENVMAPLOD);
-        float3 lookupHigh = texCUBE(EnvmapSampler, specularReflectionVector); // Take multiple samples and average them
+		float3 lookupHigh = ENV_MAP_SCALE * texCUBE(EnvmapSampler, specularUV).xyz;
+
         float3 lookupLow = PixelShaderAmbientLight(specularReflectionVector, cAmbientCube);
 		float3 specularIrradiance = lerp(lookupHigh, lookupLow, roughness * roughness);
 		float3 specularIBL = specularIrradiance * EnvBRDFApprox(fresnelReflectance, roughness, lightDirectionAngle);
