@@ -179,38 +179,70 @@ void setupEnvMapAmbientCube(out float3 EnvAmbientCube[6], sampler EnvmapSampler)
 }
 
 #if PARALLAXOCCLUSION
-float2 parallaxCorrect(float2 texCoords, float3 viewRelativeDir, sampler depthMap, float PARALLAX_DEPTH, float PARALLAX_CENTER)
-{ 
-    int numLayers =  20;  
+float2 parallaxCorrect(float2 texCoord, float3 viewRelativeDir, sampler depthMap, float parallaxDepth, float parallaxCenter)
+{
+	float fLength = length( viewRelativeDir );
+	float fParallaxLength = sqrt( fLength * fLength - viewRelativeDir.z * viewRelativeDir.z ) / viewRelativeDir.z; 
+	float2 vParallaxDirection = normalize(  viewRelativeDir.xy );
+	float2 vParallaxOffsetTS = vParallaxDirection * fParallaxLength;
+	vParallaxOffsetTS *= parallaxDepth;
 
-    float layerDepth = 1.0 / numLayers;
-    float currentLayerDepth = 0.0;
-    float2 P = viewRelativeDir.xy / viewRelativeDir.z  * (PARALLAX_DEPTH); 
-    float2 deltaTexCoords = P / numLayers;
-    float2  currentTexCoords = texCoords;
-    float currentDepthMapValue = 1.0;
-    currentDepthMapValue = tex2D(depthMap, currentTexCoords);
-    int UnrollInt = numLayers; 
-	
-    [unroll(UnrollInt)] while(currentLayerDepth < currentDepthMapValue)
-    {
-        currentTexCoords -= deltaTexCoords;
-        currentDepthMapValue = PARALLAX_CENTER - tex2D(depthMap, currentTexCoords).a;  //Alpha Channel of the Normal Map.
-        currentLayerDepth += layerDepth;  
-    }
-    
-    //return texCoords - currentTexCoords;
-    float2 prevTexCoords = currentTexCoords + deltaTexCoords;
+ 	// Compute all the derivatives:
+	float2 dx = ddx( texCoord );
+	float2 dy = ddy( texCoord );
 
-    // get depth after and before collision for linear interpolation
-    float afterDepth  = currentDepthMapValue - currentLayerDepth;
-    float beforeDepth = tex2D(depthMap, prevTexCoords).a - currentLayerDepth + layerDepth;
- 
-    // interpolation of texture coordinates
-    float weight = afterDepth / (afterDepth - beforeDepth);
-    float2 finalTexCoords = prevTexCoords * weight + currentTexCoords * (1.0 - weight);
+	int nNumSteps = 20;//(int) lerp( nMaxSamples, nMinSamples, dot( vViewWS, vNormalWS ) );
 
-    return finalTexCoords;  
+	float fCurrHeight = 0.0;
+	float fStepSize   = 1.0 / (float) nNumSteps;
+	float fPrevHeight = 1.0;
+	float fNextHeight = 0.0;
+
+	int    nStepIndex = 0;
+	bool   bCondition = true;
+
+	float2 vTexOffsetPerStep = fStepSize * vParallaxOffsetTS;
+	float2 vTexCurrentOffset = texCoord;
+	float  fCurrentBound     = 1.0;
+	float  fParallaxAmount   = 0.0;
+
+	float2 pt1 = 0;
+	float2 pt2 = 0;
+
+	float2 texOffset2 = 0;
+
+	while ( nStepIndex < nNumSteps ) 
+	{
+		vTexCurrentOffset -= vTexOffsetPerStep;
+
+		// Sample height map which in this case is stored in the alpha channel of the normal map:
+		fCurrHeight = parallaxCenter + tex2Dgrad( depthMap, vTexCurrentOffset, dx, dy ).a;
+
+		fCurrentBound -= fStepSize;
+
+		if ( fCurrHeight > fCurrentBound ) 
+		{     
+			pt1 = float2( fCurrentBound, fCurrHeight );
+			pt2 = float2( fCurrentBound + fStepSize, fPrevHeight );
+
+			texOffset2 = vTexCurrentOffset - vTexOffsetPerStep;
+
+			nStepIndex = nNumSteps + 1;
+		}
+		else
+		{
+			nStepIndex++;
+			fPrevHeight = fCurrHeight;
+		}
+	}   // End of while ( nStepIndex < nNumSteps )
+
+	float fDelta2 = pt2.x - pt2.y;
+	float fDelta1 = pt1.x - pt1.y;
+	fParallaxAmount = (pt1.x * fDelta2 - pt2.x * fDelta1 ) / ( fDelta2 - fDelta1 );
+	float2 vParallaxOffset = vParallaxOffsetTS * (1 - fParallaxAmount);
+	// The computed texture offset for the displaced point on the pseudo-extruded surface:
+	float2 texSample = texCoord - vParallaxOffset;
+	return texSample;
 }
 #endif
 
