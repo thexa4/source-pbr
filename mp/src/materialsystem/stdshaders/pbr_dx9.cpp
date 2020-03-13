@@ -611,9 +611,9 @@ BEGIN_VS_SHADER(PBR, "PBR shader")
             }
 
             float flParams[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
-            //Parallax Depth
+            // Parallax Depth (the strength of the effect)
             flParams[0] = GetFloatParam(info.parallaxDepth, params, 3.0f);
-            //Parallax Center (part of the parallax that does not move)
+            // Parallax Center (the height at which it's not moved)
             flParams[1] = GetFloatParam(info.parallaxCenter, params, 3.0f);
             pShaderAPI->SetPixelShaderConstant(40, flParams, 1);
 

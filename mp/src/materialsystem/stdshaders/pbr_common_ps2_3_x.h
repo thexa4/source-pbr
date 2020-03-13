@@ -53,7 +53,7 @@ float3 EnvBRDFApprox(float3 SpecularColor, float Roughness, float NoV)
 }
 
 // Compute the matrix used to transform tangent space normals to world space
-// We're doing this in the pixel shader to support both DirectX and OpenGL normal maps
+// This expects DirectX normal maps in Mikk Tangent Space http://www.mikktspace.com
 float3x3 compute_tangent_frame(float3 N, float3 P, float2 uv, out float3 T, out float3 B, out float sign_det)
 {
     float3 dp1 = ddx(P);
@@ -191,7 +191,7 @@ float2 parallaxCorrect(float2 texCoord, float3 viewRelativeDir, sampler depthMap
     float2 dx = ddx( texCoord );
     float2 dy = ddy( texCoord );
 
-    int nNumSteps = 20;//(int) lerp( nMaxSamples, nMinSamples, dot( vViewWS, vNormalWS ) );
+    int nNumSteps = 20; // lerp( nMaxSamples, nMinSamples, dot( vViewWS, vNormalWS ) );
 
     float fCurrHeight = 0.0;
     float fStepSize   = 1.0 / (float) nNumSteps;
