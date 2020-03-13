@@ -55,6 +55,7 @@ sampler MRAOTextureSampler		    : register(s10);	// MRAO texture
 sampler EmissionTextureSampler	    : register(s11);	// Emission texture
 #endif
 
+#define ENVMAPLOD (g_EyePos.a)
 
 struct PS_INPUT
 {
@@ -275,7 +276,7 @@ float4 main(PS_INPUT i) : COLOR
 		float3 diffuseContributionFactor = lerp(1 - ambientLightingFresnelTerm, 0, metalness); ; // kd
 		float3 diffuseIBL = diffuseContributionFactor * albedo.rgb * diffuseIrradiance;
 
-		float4 specularUV = float4(specularReflectionVector, roughness);
+		float4 specularUV = float4(specularReflectionVector, roughness * ENVMAPLOD);
 		float3 lookupHigh = ENV_MAP_SCALE * texCUBElod(EnvmapSampler, specularUV).xyz;
         float3 lookupLow = PixelShaderAmbientLight(specularReflectionVector, EnvAmbientCube);
 		float3 specularIrradiance = lerp(lookupHigh, lookupLow, roughness * roughness);
