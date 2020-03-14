@@ -1,20 +1,18 @@
-//===================== Copyright (c) Valve Corporation. All Rights Reserved. ======================
+//==================================================================================================
 //
 // Physically Based Rendering shader for brushes and models
 //
 //==================================================================================================
 
-// Bugs:
-// Cubemap and ambient cube can change on models based on flashlight state and direction you're looking
-
 // Includes for all shaders
 #include "BaseVSShader.h"
 #include "cpp_shader_constant_register_map.h"
 
-// Includes specific to this shader
+// Includes for PS30
 #include "pbr_vs30.inc"
 #include "pbr_ps30.inc"
-// PS 2.0b Implementation
+
+// Includes for PS20b
 #include "pbr_vs20b.inc"
 #include "pbr_ps20b.inc"
 
@@ -34,7 +32,6 @@ const Sampler_t SAMPLER_SPECULAR = SHADER_SAMPLER12;
 static ConVar mat_fullbright("mat_fullbright", "0", FCVAR_CHEAT);
 static ConVar mat_specular("mat_specular", "1", FCVAR_CHEAT);
 static ConVar mat_pbr_force_20b("mat_pbr_force_20b", "0", FCVAR_CHEAT);
-
 static ConVar mat_pbr_parallaxmap("mat_pbr_parallaxmap", "1");
 
 // Variables for this shader
@@ -300,12 +297,12 @@ BEGIN_VS_SHADER(PBR, "PBR shader")
                 useParallax = 0;
             }
 
-            //If the material is used in a model that needs vertex lighting, we use env ambient to supply ambient lighting.
+            // If the material is used on a model that needs vertex lighting, we use env ambient to supply ambient lighting.
             if (IS_FLAG2_SET(MATERIAL_VAR2_LIGHTING_VERTEX_LIT))
             {
                 bUseEnvAmbient = 1;
             }
-                
+
             if (!g_pHardwareConfig->SupportsShaderModel_3_0() || mat_pbr_force_20b.GetBool())
             {
 
