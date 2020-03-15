@@ -70,7 +70,6 @@ float3x3 compute_tangent_frame(float3 N, float3 P, float2 uv, out float3 T, out 
     return float3x3(T, B, N);
 }
 
-
 float GetAttenForLight(float4 lightAtten, int lightNum)
 {
 #if (NUM_LIGHTS > 1)
@@ -87,6 +86,7 @@ float GetAttenForLight(float4 lightAtten, int lightNum)
 
     return lightAtten.x;
 }
+
 // Calculate direct light for one source
 float3 calculateLight(float3 lightIn, float3 lightIntensity, float3 lightOut, float3 normal, float3 fresnelReflectance, float roughness, float metalness, float lightDirectionAngle, float3 albedo)
 {
@@ -153,7 +153,7 @@ float3 ambientLookupLightmap(float3 normal, float3 EnvAmbientCube[6], float3 tex
 
     float sum = dot(dp, float3(1, 1, 1));
     diffuseLighting *= g_DiffuseModulation.xyz / sum;
-    return diffuseLighting * PI;
+    return diffuseLighting;
 }
 
 float3 ambientLookup(float3 normal, float3 EnvAmbientCube[6], float3 textureNormal, float4 lightmapTexCoord1And2, float4 lightmapTexCoord3, sampler LightmapSampler, float4 g_DiffuseModulation){
@@ -191,7 +191,7 @@ float2 parallaxCorrect(float2 texCoord, float3 viewRelativeDir, sampler depthMap
     float2 dx = ddx( texCoord );
     float2 dy = ddy( texCoord );
 
-    int nNumSteps = 20; // lerp( nMaxSamples, nMinSamples, dot( vViewWS, vNormalWS ) );
+    int nNumSteps = 20;
 
     float fCurrHeight = 0.0;
     float fStepSize   = 1.0 / (float) nNumSteps;
