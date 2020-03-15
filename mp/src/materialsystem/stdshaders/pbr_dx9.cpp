@@ -295,12 +295,6 @@ BEGIN_VS_SHADER(PBR, "PBR shader")
                 useParallax = 0;
             }
 
-            // If the material is used on a model that needs vertex lighting, we use env ambient to supply ambient lighting.
-            if (IS_FLAG2_SET(MATERIAL_VAR2_LIGHTING_VERTEX_LIT))
-            {
-                bUseEnvAmbient = 1;
-            }
-
             if (!g_pHardwareConfig->SupportsShaderModel_3_0() || mat_pbr_force_20b.GetBool())
             {
 
