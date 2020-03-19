@@ -2,7 +2,7 @@ versioninfo
 {
 	"editorversion" "400"
 	"editorbuild" "8163"
-	"mapversion" "388"
+	"mapversion" "400"
 	"formatversion" "100"
 	"prefab" "0"
 }
@@ -38,7 +38,7 @@ viewsettings
 world
 {
 	"id" "1"
-	"mapversion" "388"
+	"mapversion" "400"
 	"classname" "worldspawn"
 	"detailmaterial" "detail/detailsprites"
 	"detailvbsp" "detail.vbsp"
@@ -2012,7 +2012,7 @@ entity
 		{
 			"id" "2125"
 			"plane" "(0 -512 256) (0 -512 432) (-64 -512 432)"
-			"material" "SHADERTEST/PLANKS_PBR"
+			"material" "SHADERTEST/PLANKS_LMG"
 			"uaxis" "[0 0 1 0] 0.25"
 			"vaxis" "[-1 0 0 0] 0.25"
 			"rotation" "0"
@@ -2023,7 +2023,7 @@ entity
 		{
 			"id" "2124"
 			"plane" "(0 -576 256) (0 -576 432) (0 -512 432)"
-			"material" "SHADERTEST/PLANKS_PBR"
+			"material" "SHADERTEST/PLANKS_LMG"
 			"uaxis" "[0 0 1 0] 0.25"
 			"vaxis" "[0 1 0 0] 0.25"
 			"rotation" "90"
@@ -2045,8 +2045,8 @@ entity
 		{
 			"id" "2122"
 			"plane" "(-32 -544 448) (-64 -512 432) (0 -512 432)"
-			"material" "SHADERTEST/PLANKS_PBR"
-			"uaxis" "[0 -0.894427 0.447214 -876.572] 0.25"
+			"material" "SHADERTEST/PLANKS_LMG"
+			"uaxis" "[0 -0.894427 0.447214 -364.572] 0.25"
 			"vaxis" "[-1 0 0 0] 0.25"
 			"rotation" "0"
 			"lightmapscale" "16"
@@ -2056,8 +2056,8 @@ entity
 		{
 			"id" "2121"
 			"plane" "(-32 -544 448) (0 -512 432) (0 -576 432)"
-			"material" "SHADERTEST/PLANKS_PBR"
-			"uaxis" "[-0.894427 0 0.447214 955.215] 0.25"
+			"material" "SHADERTEST/PLANKS_LMG"
+			"uaxis" "[-0.894427 0 0.447214 443.215] 0.25"
 			"vaxis" "[0 1 0 0] 0.25"
 			"rotation" "0"
 			"lightmapscale" "16"
@@ -6536,7 +6536,12 @@ entity
 }
 cameras
 {
-	"activecamera" "-1"
+	"activecamera" "0"
+	camera
+	{
+		"position" "[25.7685 -524.274 501.917]"
+		"look" "[-93.3791 -503.265 404.642]"
+	}
 }
 cordon
 {
