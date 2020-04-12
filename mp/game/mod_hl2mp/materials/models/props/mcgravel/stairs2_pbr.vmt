@@ -1,0 +1,10 @@
+PBR
+{
+	$basetexture "models\props\mcgravel\plain_titanium_d"
+	$bumpmap "models\props\mcgravel\plain_titanium_n"
+	$mraotexture "models\props\mcgravel\plain_titanium_mrao"
+	
+	$envmap env_cubemap
+	$model 1
+	$useenvambient 1
+}

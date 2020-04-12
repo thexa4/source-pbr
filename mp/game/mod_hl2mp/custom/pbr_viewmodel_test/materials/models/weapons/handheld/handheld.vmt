@@ -1,0 +1,13 @@
+"PBR"
+{
+	"$basetexture" "models/weapons/handheld/handheld_bc"
+	"$bumpmap" "models/weapons/handheld/handheld_n"
+	"$mraotexture" "models/weapons/handheld/handheld_mrao"
+	"$emissiontexture" "models/weapons/handheld/handheld_e"
+	"$envmap" "env_cubemap"
+	"$model" "1"
+	"$parallax" "1"
+	"$parallaxdepth" "0.05"
+	"$parallaxcenter" "0.5"
+
+}

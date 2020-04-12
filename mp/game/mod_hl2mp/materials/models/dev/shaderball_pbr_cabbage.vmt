@@ -1,0 +1,9 @@
+PBR
+{
+	$basetexture	"models/dev/shaderball_cabbage_bc"
+	$bumpmap		"models/dev/shaderball_cabbage_n"
+	$mraotexture	"models/dev/shaderball_cabbage_mrao"
+	$model			"1"
+$useEnvAmbient 1
+
+}

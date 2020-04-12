@@ -1,0 +1,9 @@
+example_model_ps20b.fxc-----example_model_ps20b
+example_model_vs20.fxc-----example_model_vs20
+SDK_Bloom_ps2x.fxc-----SDK_Bloom_ps20
+SDK_Bloom_ps2x.fxc-----SDK_Bloom_ps20b
+SDK_screenspaceeffect_vs20.fxc-----SDK_screenspaceeffect_vs20
+SDK_bloomadd_ps2x.fxc-----SDK_bloomadd_ps20
+SDK_bloomadd_ps2x.fxc-----SDK_bloomadd_ps20b
+pbr_vs20b.fxc-----pbr_vs20b
+pbr_ps20b.fxc-----pbr_ps20b

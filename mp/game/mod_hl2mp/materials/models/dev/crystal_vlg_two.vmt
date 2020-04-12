@@ -1,0 +1,15 @@
+VertexLitGeneric
+{
+	"$basetexture" "models/dev/crystal_bc"
+	"$bumpmap" "models/dev/crystal_n"
+
+	"$additive" "1"
+
+	"$envmap" "env_cubemap"
+	"$envmaptint" "[0.05 0.05 0.05]"
+
+	"$phong" "1"
+	"$phongfresnelranges" "[0.1 0.55 1]"
+	"$phongexponent" "100"
+	"$phongboost" "10"
+}

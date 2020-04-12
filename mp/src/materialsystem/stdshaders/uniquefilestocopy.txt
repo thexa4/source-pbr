@@ -1,0 +1,6 @@
+"D:\Code\renegade-code\sp\src\shadercompile"\shadercompile.exe 
+"D:\Code\renegade-code\sp\src\shadercompile"\shadercompile_dll.dll 
+"D:\Code\renegade-code\sp\src\shadercompile"\tier0.dll 
+"D:\Code\renegade-code\sp\src\shadercompile"\vstdlib.dll 
+..\..\devtools\bin\d3dx9_33.dll 
+..\..\dx10sdk\utilities\dx9_30\dx_proxy.dll 

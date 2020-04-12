@@ -1,0 +1,14 @@
+PBR
+{
+	"$basetexture" "momentum/dev_test/pbr_tile_d"
+	"$bumpmap" "momentum/dev_test/pbr_tile_n"
+	"$surfaceprop" "default"
+
+	"$envmap" "env_cubemap"
+
+	"$mraotexture" "momentum/dev_test/pbr_tile_mrao"
+	"$parallax" "1"
+	"$parallaxdepth" "0.010"
+	"$parallaxcenter" "0.5"
+
+}

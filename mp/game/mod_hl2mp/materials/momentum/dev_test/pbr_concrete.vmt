@@ -1,0 +1,10 @@
+PBR
+{
+	"$basetexture" "momentum/dev_test/pbr_concrete_d"
+	"$bumpmap" "momentum/dev_test/pbr_concrete_n"
+	"$surfaceprop" "default"
+
+	"$envmap" "env_cubemap"
+
+	"$mraotexture" "momentum/dev_test/pbr_concrete_mrao"
+}

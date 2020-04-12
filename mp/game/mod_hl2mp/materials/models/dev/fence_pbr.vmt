@@ -1,0 +1,9 @@
+PBR
+{
+	$basetexture			"models/dev/fence_diffuse_opacity"
+	$bumpmap				"models/dev/fence_normal_gloss"
+	$mraotexture			"models/dev/fence_metal_rough_ao"
+	$model					"1"
+	$alphatest				"1"
+	$alphatestreference		"0.3"
+}
