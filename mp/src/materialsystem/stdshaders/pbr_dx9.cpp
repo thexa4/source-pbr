@@ -112,10 +112,6 @@ BEGIN_VS_SHADER(PBR, "PBR shader")
         if (!params[BUMPMAP]->IsDefined())
             params[BUMPMAP]->SetStringValue("dev/flat_normal");
 
-        // Set a good default base texture
-        if (!params[BASETEXTURE]->IsDefined())
-            params[BASETEXTURE]->SetStringValue("dev/pbr_basetexture");
-
         // Set a good default mrao texture
         if (!params[MRAOTEXTURE]->IsDefined())
             params[MRAOTEXTURE]->SetStringValue("dev/pbr_mraotexture");
@@ -348,7 +344,7 @@ BEGIN_VS_SHADER(PBR, "PBR shader")
             }
             else
             {
-                pShaderAPI->BindStandardTexture(SAMPLER_BASETEXTURE, TEXTURE_WHITE);
+                pShaderAPI->BindStandardTexture(SAMPLER_BASETEXTURE, TEXTURE_GREY);
             }
 
             // Setting up vmt color
