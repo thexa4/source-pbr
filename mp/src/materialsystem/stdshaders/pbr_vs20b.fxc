@@ -111,7 +111,6 @@ VS_OUTPUT main( const VS_INPUT v )
     // Base texture coordinate transform
     o.baseTexCoord.x = dot(v.vTexCoord0, cBaseTexCoordTransform[0].xy);
     o.baseTexCoord.y = dot(v.vTexCoord0, cBaseTexCoordTransform[1].xy);
-    o.baseTexCoord = v.vTexCoord0;
 
     return o;
 }
