@@ -44,7 +44,7 @@ PixelShaderLightInfo cLightInfo[3]              : register(PSREG_LIGHT_INFO_ARRA
 const float4 g_BaseColor                        : register(PSREG_SELFILLUMTINT);
 
 #if PARALLAXOCCLUSION
-const float4 g_ParallaxParms                    : register( c40 );
+const float4 g_ParallaxParms                    : register( c27 );
 #define PARALLAX_DEPTH                          g_ParallaxParms.r
 #define PARALLAX_CENTER                         g_ParallaxParms.g
 #endif
