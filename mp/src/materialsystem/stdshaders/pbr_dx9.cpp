@@ -43,7 +43,6 @@ struct PBR_Vars_t
     }
 
     int baseTexture;
-    int baseColor;
     int normalTexture;
     int bumpMap;
     int envMap;
@@ -56,9 +55,12 @@ struct PBR_Vars_t
     int flashlightTexture;
     int flashlightTextureFrame;
     int emissionTexture;
+    int emissionTint;
+    int emissionStrength;
     int mraoTexture;
     int useEnvAmbient;
     int specularTexture;
+    int blendTintByBaseAlpha;
 };
 
 // Beginning the shader
@@ -69,21 +71,27 @@ BEGIN_VS_SHADER(PBR, "PBR shader")
         SHADER_PARAM(ALPHATESTREFERENCE, SHADER_PARAM_TYPE_FLOAT, "0", "");
         SHADER_PARAM(ENVMAP, SHADER_PARAM_TYPE_ENVMAP, "", "Set the cubemap for this material.");
         SHADER_PARAM(MRAOTEXTURE, SHADER_PARAM_TYPE_TEXTURE, "", "Texture with metalness in R, roughness in G, ambient occlusion in B.");
-        SHADER_PARAM(EMISSIONTEXTURE, SHADER_PARAM_TYPE_TEXTURE, "", "Emission texture");
         SHADER_PARAM(NORMALTEXTURE, SHADER_PARAM_TYPE_TEXTURE, "", "Normal texture (deprecated, use $bumpmap)");
         SHADER_PARAM(BUMPMAP, SHADER_PARAM_TYPE_TEXTURE, "", "Normal texture");
         SHADER_PARAM(USEENVAMBIENT, SHADER_PARAM_TYPE_BOOL, "0", "Use the cubemaps to compute ambient light.");
         SHADER_PARAM(SPECULARTEXTURE, SHADER_PARAM_TYPE_TEXTURE, "", "Specular F0 RGB map");
+
+        SHADER_PARAM(EMISSIONTEXTURE, SHADER_PARAM_TYPE_TEXTURE, "", "Emission texture");
+        SHADER_PARAM(EMISSIONTINT, SHADER_PARAM_TYPE_COLOR, "[1 1 1]", "Emission texture tint");
+        SHADER_PARAM(EMISSIONSTRENGTH, SHADER_PARAM_TYPE_FLOAT, "1", "Emission texture strength");
+
         SHADER_PARAM(PARALLAX, SHADER_PARAM_TYPE_BOOL, "0", "Use Parallax Occlusion Mapping.");
         SHADER_PARAM(PARALLAXDEPTH, SHADER_PARAM_TYPE_FLOAT, "0.0030", "Depth of the Parallax Map");
         SHADER_PARAM(PARALLAXCENTER, SHADER_PARAM_TYPE_FLOAT, "0.5", "Center depth of the Parallax Map");
+
+        SHADER_PARAM(BLENDTINTBYBASEALPHA, SHADER_PARAM_TYPE_BOOL, "0", "Use the base alpha to blend in the $color modulation");
+        SHADER_PARAM(BLENDTINTCOLOROVERBASE, SHADER_PARAM_TYPE_FLOAT, "0", "blend between tint acting as a multiplication versus a replace");
     END_SHADER_PARAMS;
 
     // Setting up variables for this shader
     void SetupVars(PBR_Vars_t &info)
     {
         info.baseTexture = BASETEXTURE;
-        info.baseColor = COLOR;
         info.normalTexture = NORMALTEXTURE;
         info.bumpMap = BUMPMAP;
         info.baseTextureFrame = FRAME;
@@ -93,12 +101,15 @@ BEGIN_VS_SHADER(PBR, "PBR shader")
         info.flashlightTextureFrame = FLASHLIGHTTEXTUREFRAME;
         info.envMap = ENVMAP;
         info.emissionTexture = EMISSIONTEXTURE;
+        info.emissionTint = EMISSIONTINT;
+        info.emissionStrength = EMISSIONSTRENGTH;
         info.mraoTexture = MRAOTEXTURE;
         info.useEnvAmbient = USEENVAMBIENT;
         info.specularTexture = SPECULARTEXTURE;
         info.useParallax = PARALLAX;
         info.parallaxDepth = PARALLAXDEPTH;
         info.parallaxCenter = PARALLAXCENTER;
+        info.blendTintByBaseAlpha = BLENDTINTBYBASEALPHA;
     };
 
     // Initializing parameters
@@ -119,6 +130,10 @@ BEGIN_VS_SHADER(PBR, "PBR shader")
         // PBR relies heavily on envmaps
         if (!params[ENVMAP]->IsDefined())
             params[ENVMAP]->SetStringValue("env_cubemap");
+
+        // Emission strength insists on being set to 0 if not set, even with overrides
+        if (!params[EMISSIONSTRENGTH]->IsDefined())
+            params[EMISSIONSTRENGTH]->SetFloatValue(1.0f);
 
         // Check if the hardware supports flashlight border color
         if (g_pHardwareConfig->SupportsBorderColor())
@@ -199,13 +214,15 @@ BEGIN_VS_SHADER(PBR, "PBR shader")
         bool bHasNormalTexture = (info.bumpMap != -1) && params[info.bumpMap]->IsTexture();
         bool bHasMraoTexture = (info.mraoTexture != -1) && params[info.mraoTexture]->IsTexture();
         bool bHasEmissionTexture = (info.emissionTexture != -1) && params[info.emissionTexture]->IsTexture();
+        bool bHasEmissionTint = (info.emissionTint != -1) && params[info.emissionTint]->IsDefined();
+        bool bHasEmissionStrength = (info.emissionStrength != -1) && params[info.emissionStrength]->IsDefined();
         bool bHasEnvTexture = (info.envMap != -1) && params[info.envMap]->IsTexture();
         bool bIsAlphaTested = IS_FLAG_SET(MATERIAL_VAR_ALPHATEST) != 0;
         bool bHasFlashlight = UsingFlashlight(params);
-        bool bHasColor = (info.baseColor != -1) && params[info.baseColor]->IsDefined();
         bool bLightMapped = !IS_FLAG_SET(MATERIAL_VAR_MODEL);
         bool bUseEnvAmbient = (info.useEnvAmbient != -1) && (params[info.useEnvAmbient]->GetIntValue() == 1);
         bool bHasSpecularTexture = (info.specularTexture != -1) && params[info.specularTexture]->IsTexture();
+        bool bBlendTintByBaseAlpha = (info.blendTintByBaseAlpha != -1) && (params[info.blendTintByBaseAlpha]->GetIntValue() == 1);
 
         // Determining whether we're dealing with a fully opaque material
         BlendType_t nBlendType = EvaluateBlendRequirements(info.baseTexture, true);
@@ -307,6 +324,7 @@ BEGIN_VS_SHADER(PBR, "PBR shader")
                 SET_STATIC_PIXEL_SHADER_COMBO(LIGHTMAPPED, bLightMapped);
                 SET_STATIC_PIXEL_SHADER_COMBO(EMISSIVE, bHasEmissionTexture);
                 SET_STATIC_PIXEL_SHADER_COMBO(SPECULAR, 0);
+                SET_STATIC_PIXEL_SHADER_COMBO(BLENDTINTBYBASEALPHA, bBlendTintByBaseAlpha);
                 SET_STATIC_PIXEL_SHADER(pbr_ps20b);
             }
             else
@@ -324,6 +342,7 @@ BEGIN_VS_SHADER(PBR, "PBR shader")
                 SET_STATIC_PIXEL_SHADER_COMBO(EMISSIVE, bHasEmissionTexture);
                 SET_STATIC_PIXEL_SHADER_COMBO(SPECULAR, bHasSpecularTexture);
                 SET_STATIC_PIXEL_SHADER_COMBO(PARALLAXOCCLUSION, useParallax);
+                SET_STATIC_PIXEL_SHADER_COMBO(BLENDTINTBYBASEALPHA, bBlendTintByBaseAlpha);
                 SET_STATIC_PIXEL_SHADER(pbr_ps30);
             }
 
@@ -348,16 +367,9 @@ BEGIN_VS_SHADER(PBR, "PBR shader")
             }
 
             // Setting up vmt color
-            Vector color;
-            if (bHasColor)
-            {
-                params[info.baseColor]->GetVecValue(color.Base(), 3);
-            }
-            else
-            {
-                color = Vector{1.f, 1.f, 1.f};
-            }
-            pShaderAPI->SetPixelShaderConstant(PSREG_SELFILLUMTINT, color.Base());
+            float color[4] = { 1.0, 1.0, 1.0, 1.0 };
+            ComputeModulationColor(color);
+            pShaderAPI->SetPixelShaderConstant(PSREG_SELFILLUMTINT, color);
 
             // Setting up environment map
             if (bHasEnvTexture)
@@ -559,7 +571,7 @@ BEGIN_VS_SHADER(PBR, "PBR shader")
 
             // Set up shader modulation color
             float modulationColor[4] = { 1.0, 1.0, 1.0, 1.0 };
-            ComputeModulationColor(modulationColor);
+            // ComputeModulationColor(modulationColor);
             float flLScale = pShaderAPI->GetLightMapScaleFactor();
             modulationColor[0] *= flLScale;
             modulationColor[1] *= flLScale;
@@ -604,8 +616,23 @@ BEGIN_VS_SHADER(PBR, "PBR shader")
             flParams[0] = GetFloatParam(info.parallaxDepth, params, 3.0f);
             // Parallax Center (the height at which it's not moved)
             flParams[1] = GetFloatParam(info.parallaxCenter, params, 3.0f);
+
+            // pardon my intrusion, but i really need this free variable
+            if (bBlendTintByBaseAlpha && params[BLENDTINTCOLOROVERBASE]->IsDefined())
+                flParams[3] = params[BLENDTINTCOLOROVERBASE]->GetFloatValue();
+
             pShaderAPI->SetPixelShaderConstant(27, flParams, 1);
 
+            // Emission tint and strength
+            float flEmissionTint[4] = { 1.0f, 1.0f, 1.0f, 1.0f }; // RGB is tint, A is strength
+
+            if (bHasEmissionTint)
+                params[info.emissionTint]->GetVecValue(flEmissionTint, 3);
+
+            if (bHasEmissionStrength)
+                flEmissionTint[3] = params[info.emissionStrength]->GetFloatValue();
+
+            pShaderAPI->SetPixelShaderConstant(PSREG_SELFILLUM_SCALE_BIAS_EXP, flEmissionTint);
         }
 
         // Actually draw the shader
