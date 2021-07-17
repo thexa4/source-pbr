@@ -136,7 +136,7 @@ float4 main(PS_INPUT i) : COLOR
     {
         float3 diffuseIrradiance = ambientLookup(normal, EnvAmbientCube, textureNormal, i.lightmapTexCoord1And2, i.lightmapTexCoord3, LightmapSampler, g_DiffuseModulation);
         // return float4(diffuseIrradiance, 1); // testing diffuse irraciance
-        float3 ambientLightingFresnelTerm = fresnelSchlick(fresnelReflectance, lightDirectionAngle); // F
+        float3 ambientLightingFresnelTerm = fresnelSchlickRoughness(fresnelReflectance, lightDirectionAngle, roughness); // F
 #if SPECULAR
         float3 diffuseContributionFactor = 1 - ambientLightingFresnelTerm; // kd
 #else
