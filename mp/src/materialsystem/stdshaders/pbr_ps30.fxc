@@ -95,8 +95,8 @@ float4 main(PS_INPUT i) : COLOR
 
 #if PARALLAXOCCLUSION
     float3 outgoingLightRay = g_EyePos.xyz - i.worldPos;
-       float3 outgoingLightDirectionTS = worldToRelative( outgoingLightRay, surfTangent, surfBase, surfNormal);
-    float2 correctedTexCoord = parallaxCorrect(i.baseTexCoord, outgoingLightDirectionTS , NormalTextureSampler , PARALLAX_DEPTH , PARALLAX_CENTER);
+    float3 outgoingLightDirectionTS = worldToRelative( outgoingLightRay, surfTangent, surfBase, surfNormal);
+    float2 correctedTexCoord = parallaxCorrect(i.baseTexCoord, outgoingLightDirectionTS , outgoingLightRay, i.worldNormal, NormalTextureSampler , PARALLAX_DEPTH , PARALLAX_CENTER);
 #else
     float2 correctedTexCoord = i.baseTexCoord;
 #endif
