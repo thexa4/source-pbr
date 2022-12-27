@@ -186,13 +186,14 @@ void setupEnvMapAmbientCube(out float3 EnvAmbientCube[6], sampler EnvmapSampler)
 }
 
 #if PARALLAXOCCLUSION
-float2 parallaxCorrect(float2 texCoord, float3 viewRelativeDir, sampler depthMap, float parallaxDepth, float parallaxCenter)
+float2 parallaxCorrect(float2 texCoord, float3 viewRelativeDir, float3 worldSpaceWorldToEye, float3 worldSpaceNormal, sampler depthMap, float parallaxDepth, float parallaxCenter)
 {
     float fLength = length( viewRelativeDir );
     float fParallaxLength = sqrt( fLength * fLength - viewRelativeDir.z * viewRelativeDir.z ) / viewRelativeDir.z; 
     float2 vParallaxDirection = normalize(  viewRelativeDir.xy );
     float2 vParallaxOffsetTS = vParallaxDirection * fParallaxLength;
-    vParallaxOffsetTS *= parallaxDepth;
+    float fViewDotHorizonFactor = min(saturate(dot(normalize(worldSpaceNormal), normalize(worldSpaceWorldToEye))), 0.5) * 2;
+    vParallaxOffsetTS *= saturate(parallaxDepth * fViewDotHorizonFactor);
 
      // Compute all the derivatives:
     float2 dx = ddx( texCoord );
